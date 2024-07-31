@@ -1,7 +1,11 @@
 //! Scruters is a TUI with various tools for Rust
 //! development.
 
-use color_eyre::{config::HookBuilder, eyre, Result};
+use color_eyre::{
+    config::HookBuilder,
+    eyre::{self, Context},
+    Result,
+};
 use state::State;
 use std::panic;
 
@@ -12,13 +16,19 @@ mod tui;
 async fn main() -> Result<()> {
     install_hooks()?;
 
-    let state = if let Some(state) =
-        State::load_from_file().await
+    let state = if let Some(state) = State::load_from_file()
+        .await
+        .wrap_err("Error loading state")?
     {
         state
     } else {
         let state = State::default();
-        state.save_to_file().await;
+
+        state
+            .save_to_file()
+            .await
+            .wrap_err("Error saving state")?;
+
         state
     };
 

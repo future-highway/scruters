@@ -3,6 +3,7 @@
 //! The state is saved and loaded from the 'scruters.json'
 //! file. It is designed to be version controlled.
 
+use color_eyre::{eyre::Context, Result};
 use serde::{Deserialize, Serialize};
 use testing::TestingState;
 use tokio::{
@@ -20,7 +21,7 @@ pub struct State {
 }
 
 impl State {
-    pub async fn load_from_file() -> Option<Self> {
+    pub async fn load_from_file() -> Result<Option<Self>> {
         let file = OpenOptions::new()
             .read(true)
             .open(STATE_FILE_PATH)
@@ -37,45 +38,38 @@ impl State {
                 if error.kind()
                     == ErrorKind::PermissionDenied =>
             {
-                panic!(
-                    "Permission denied reading file: {error:?}"
+                return Err(error).wrap_err(
+                    "Permission denied reading scruters.json",
                 );
             }
             Err(error) => {
-                panic!("Error opening file: {error:?}");
+                return Err(error).wrap_err(
+                    "Error opening scruters.json for reading",
+                );
             }
         };
 
-        let mut file = file?;
+        let Some(mut file) = file else {
+            return Ok(None);
+        };
 
         let mut buf = Vec::new();
-        if let Err(error) = file.read_to_end(&mut buf).await
-        {
-            panic!("Error reading file: {error:?}");
-        }
+        _ = file
+            .read_to_end(&mut buf)
+            .await
+            .wrap_err("Error reading scruters.json")?;
 
-        let state = match serde_json::from_slice::<Self>(
-            &buf,
-        ) {
-            Ok(state) => state,
-            Err(error) => {
-                panic!(
-                    "Error deserializing file: {error:?}"
-                );
-            }
-        };
+        let state = serde_json::from_slice::<Self>(&buf)
+            .wrap_err(
+                "Error deserializing scruters.json",
+            )?;
 
-        Some(state)
+        Ok(Some(state))
     }
 
-    pub async fn save_to_file(&self) {
-        let json = match serde_json::to_string_pretty(self)
-        {
-            Ok(json) => json,
-            Err(error) => {
-                panic!("Error serializing state: {error:?}")
-            }
-        };
+    pub async fn save_to_file(&self) -> Result<()> {
+        let json = serde_json::to_string_pretty(self)
+            .wrap_err("Error serializing state")?;
 
         let file = OpenOptions::new()
             .write(true)
@@ -90,19 +84,21 @@ impl State {
                 if error.kind()
                     == ErrorKind::PermissionDenied =>
             {
-                panic!(
-                    "Permission denied writing file: {error:?}"
+                return Err(error).wrap_err(
+                    "Permission denied writing scruters.json",
                 );
             }
             Err(error) => {
-                panic!("Error opening file: {error:?}");
+                return Err(error).wrap_err(
+                    "Error opening scruters.json for writing",
+                );
             }
         };
 
-        if let Err(error) =
-            file.write_all(json.as_bytes()).await
-        {
-            panic!("Error writing file: {error:?}");
-        }
+        file.write_all(json.as_bytes())
+            .await
+            .wrap_err("Error writing scruters.json")?;
+
+        Ok(())
     }
 }
