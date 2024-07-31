@@ -9,6 +9,8 @@ readme = "README.md"
 repository.workspace = true
 
 [dependencies]
+color-eyre.workspace = true
+ratatui.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
