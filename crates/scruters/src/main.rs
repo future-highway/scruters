@@ -8,6 +8,7 @@ use color_eyre::{
 };
 use state::State;
 use std::panic;
+use tracing::{debug, trace};
 
 mod state;
 mod tui;
@@ -16,18 +17,25 @@ mod tui;
 async fn main() -> Result<()> {
     install_hooks()?;
 
+    // TODO: Initialize tracing
+
     let state = if let Some(state) = State::load_from_file()
         .await
         .wrap_err("Error loading state")?
     {
+        debug!("Loaded state from file");
         state
     } else {
+        trace!("Creating new state");
+
         let state = State::default();
 
         state
             .save_to_file()
             .await
             .wrap_err("Error saving state")?;
+
+        debug!("Saved initial state to file");
 
         state
     };
