@@ -6,12 +6,17 @@ use color_eyre::{
     eyre::{self, Context},
     Result,
 };
+use crossterm::event::{Event, EventStream};
+use message::Message;
 use state::State;
 use std::panic;
+use tokio_stream::StreamExt as _;
 use tracing::{debug, trace};
 
+mod message;
 mod state;
 mod tui;
+mod ui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -19,32 +24,46 @@ async fn main() -> Result<()> {
 
     // TODO: Initialize tracing
 
-    let state = if let Some(state) = State::load_from_file()
+    let mut terminal = tui::init()?;
+
+    let mut state = initialize_state()
         .await
-        .wrap_err("Error loading state")?
-    {
-        debug!("Loaded state from file");
-        state
-    } else {
-        trace!("Creating new state");
+        .wrap_err("Error initializing state")?;
 
-        let state = State::default();
+    let mut crossterm_events = EventStream::new();
 
-        state
-            .save_to_file()
-            .await
-            .wrap_err("Error saving state")?;
+    while state.current_screen.is_some() {
+        _ = terminal
+            .draw(|frame| ui::draw(&state, frame))
+            .wrap_err("Error drawing UI")?;
 
-        debug!("Saved initial state to file");
+        #[allow(clippy::integer_division_remainder_used)]
+        let mut maybe_message = tokio::select! {
+            event = crossterm_events.next() => event.map_or_else(
+                || {
+                    debug!("Crossterm event stream ended");
+                    Some(Message::Quit)
+                },
+                |event| match event {
+                    Ok(Event::Key(event)) => Some(event.into()),
+                    Ok(_) => None,
+                    Err(error) => {
+                        tracing::error!(?error, "Error reading crossterm event");
+                        None
+                    },
+                }
+            ),
+        };
 
-        state
-    };
-
-    let _tui = tui::init()?;
+        while let Some(message) = maybe_message {
+            maybe_message =
+                state.handle_message(message).await?;
+        }
+    }
 
     tui::restore()?;
 
-    todo!("{state:?}");
+    Ok(())
 }
 
 /// This replaces the standard `color_eyre` panic and error
@@ -75,4 +94,29 @@ fn install_hooks() -> Result<()> {
     }))?;
 
     Ok(())
+}
+
+async fn initialize_state() -> Result<State> {
+    let state = if let Some(state) = State::load_from_file()
+        .await
+        .wrap_err("Error loading state")?
+    {
+        debug!("Loaded state from file");
+        state
+    } else {
+        trace!("Creating new state");
+
+        let state = State::default();
+
+        state
+            .save_to_file()
+            .await
+            .wrap_err("Error saving state")?;
+
+        debug!("Saved initial state to file");
+
+        state
+    };
+
+    Ok(state)
 }

@@ -3,21 +3,35 @@
 //! The state is saved and loaded from the 'scruters.json'
 //! file. It is designed to be version controlled.
 
+use self::{screen::Screen, testing::TestingState};
+use crate::message::Message;
 use color_eyre::{eyre::Context, Result};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::{Deserialize, Serialize};
-use testing::TestingState;
 use tokio::{
     fs::OpenOptions,
     io::{AsyncReadExt, AsyncWriteExt, ErrorKind},
 };
 
+mod screen;
 mod testing;
 
 const STATE_FILE_PATH: &str = "scruters.json";
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct State {
-    testing_state: TestingState,
+    #[serde(skip, default = "screen::default_screen")]
+    pub current_screen: Option<Screen>,
+    pub testing_state: TestingState,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            current_screen: Some(Screen::default()),
+            testing_state: TestingState,
+        }
+    }
 }
 
 impl State {
@@ -100,5 +114,28 @@ impl State {
             .wrap_err("Error writing scruters.json")?;
 
         Ok(())
+    }
+
+    pub async fn handle_message(
+        &mut self,
+        message: Message,
+    ) -> Result<Option<Message>> {
+        match message {
+            Message::Quit
+            | Message::KeyEvent(KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: KeyModifiers::NONE,
+                ..
+            }) => {
+                self.save_to_file()
+                    .await
+                    .wrap_err("Error saving state")?;
+
+                self.current_screen = None;
+            }
+            Message::KeyEvent(_) => {}
+        }
+
+        Ok(None)
     }
 }
