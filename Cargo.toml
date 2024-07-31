@@ -1,0 +1,11 @@
+[workspace]
+members = ["crates/scruters"]
+resolver = "2"
+
+[workspace.package]
+authors = ["Future Highway"]
+edition = "2021"
+homepage = "https://github.com/future-highway/scruters"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/future-highway/scruters"
+version = "0.0.1"

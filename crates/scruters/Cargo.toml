@@ -1,0 +1,11 @@
+[package]
+name = "scruters"
+description = "A TUI for Rust testing and more"
+version.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme = "README.md"
+repository.workspace = true
+
+[dependencies]
