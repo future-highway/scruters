@@ -29,7 +29,14 @@ enum LoadState {
 }
 
 impl LoadState {
-    pub async fn load_from_file() -> Result<Option<Self>> {
+    fn from_json_bytes(json: &[u8]) -> Result<Self> {
+        let state = serde_json::from_slice::<Self>(json)
+            .wrap_err("Error deserializing state")?;
+
+        Ok(state)
+    }
+
+    async fn load_from_file() -> Result<Option<Self>> {
         let file = OpenOptions::new()
             .read(true)
             .open(STATE_FILE_PATH)
@@ -67,10 +74,7 @@ impl LoadState {
             .await
             .wrap_err("Error reading scruters.json")?;
 
-        let state = serde_json::from_slice::<Self>(&buf)
-            .wrap_err(
-                "Error deserializing scruters.json",
-            )?;
+        let state = Self::from_json_bytes(&buf)?;
 
         Ok(Some(state))
     }
@@ -116,5 +120,21 @@ impl SaveState<'_> {
             .wrap_err("Error writing scruters.json")?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn load_state_v0_from_json() {
+        let json = r#"{"version":"V0","state":{"testing_state":{}}}"#;
+
+        let state =
+            LoadState::from_json_bytes(json.as_bytes())
+                .expect("Error loading state from JSON");
+
+        assert!(matches!(state, LoadState::V0(_)));
     }
 }

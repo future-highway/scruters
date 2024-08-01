@@ -10,10 +10,7 @@ use crossterm::event::{Event, EventStream};
 use message::Message;
 use state::State;
 use std::panic;
-use tokio::signal::{
-    self,
-    unix::{signal, SignalKind},
-};
+use tokio::signal::unix::{signal, SignalKind};
 use tokio_stream::StreamExt as _;
 use tracing::{debug, log::LevelFilter, trace};
 

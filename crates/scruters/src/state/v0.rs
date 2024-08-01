@@ -18,7 +18,7 @@ impl Default for State {
     fn default() -> Self {
         Self {
             current_screen: Some(Screen::default()),
-            testing_state: TestingState,
+            testing_state: TestingState {},
         }
     }
 }
