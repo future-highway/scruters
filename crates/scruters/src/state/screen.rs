@@ -1,6 +1,7 @@
 #[derive(Debug, Default)]
 pub(crate) enum Screen {
     #[default]
+    Testing,
     Logs,
 }
 

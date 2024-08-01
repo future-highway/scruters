@@ -1,4 +1,6 @@
-use super::{LoadState, SaveState, Screen, TestingState};
+use super::{
+    testing::TestingState, LoadState, SaveState, Screen,
+};
 use crate::message::Message;
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -18,7 +20,7 @@ impl Default for State {
     fn default() -> Self {
         Self {
             current_screen: Some(Screen::default()),
-            testing_state: TestingState {},
+            testing_state: TestingState::default(),
         }
     }
 }
@@ -58,7 +60,23 @@ impl State {
 
                 self.current_screen = None;
             }
-            Message::KeyEvent(_) => {}
+            Message::KeyEvent(key_event) => {
+                #[allow(clippy::single_match)]
+                match self.current_screen {
+                    Some(Screen::Testing) => {
+                        return Ok(self
+                            .testing_state
+                            .handle_key_event(key_event));
+                    }
+                    _ => {}
+                }
+            }
+            Message::Testing(message) => {
+                return self
+                    .testing_state
+                    .handle_message(message)
+                    .await;
+            }
         }
 
         Ok(None)

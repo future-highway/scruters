@@ -5,7 +5,6 @@
 
 pub(crate) use self::{
     screen::Screen,
-    testing::TestingState,
     v0::{State as StateV0, State},
 };
 use color_eyre::{eyre::Context as _, Result};
@@ -17,7 +16,7 @@ use tokio::{
 };
 
 mod screen;
-mod testing;
+pub(crate) mod testing;
 mod v0;
 
 const STATE_FILE_PATH: &str = "scruters.json";

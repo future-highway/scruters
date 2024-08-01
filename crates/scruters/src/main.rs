@@ -15,6 +15,7 @@ use tokio_stream::StreamExt as _;
 use tracing::{debug, log::LevelFilter, trace};
 
 mod cargo;
+mod command;
 mod message;
 mod state;
 mod tui;
