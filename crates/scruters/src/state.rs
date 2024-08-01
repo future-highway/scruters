@@ -4,39 +4,31 @@
 //! file. It is designed to be version controlled.
 
 pub(crate) use self::{
-    screen::Screen, testing::TestingState,
+    screen::Screen,
+    testing::TestingState,
+    v0::{State as StateV0, State},
 };
-use crate::message::Message;
-use color_eyre::{eyre::Context, Result};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use color_eyre::{eyre::Context as _, Result};
 use serde::{Deserialize, Serialize};
+use std::io::ErrorKind;
 use tokio::{
     fs::OpenOptions,
-    io::{AsyncReadExt, AsyncWriteExt, ErrorKind},
+    io::{AsyncReadExt, AsyncWriteExt as _},
 };
 
 mod screen;
 mod testing;
+mod v0;
 
 const STATE_FILE_PATH: &str = "scruters.json";
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct State {
-    #[serde(skip, default = "screen::default_screen")]
-    pub current_screen: Option<Screen>,
-    pub testing_state: TestingState,
+#[derive(Debug, Deserialize)]
+#[serde(tag = "version", content = "state")]
+enum LoadState {
+    V0(StateV0),
 }
 
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            current_screen: Some(Screen::default()),
-            testing_state: TestingState,
-        }
-    }
-}
-
-impl State {
+impl LoadState {
     pub async fn load_from_file() -> Result<Option<Self>> {
         let file = OpenOptions::new()
             .read(true)
@@ -82,7 +74,15 @@ impl State {
 
         Ok(Some(state))
     }
+}
 
+#[derive(Debug, Serialize)]
+#[serde(tag = "version", content = "state")]
+enum SaveState<'a> {
+    V0(&'a StateV0),
+}
+
+impl SaveState<'_> {
     pub async fn save_to_file(&self) -> Result<()> {
         let json = serde_json::to_string_pretty(self)
             .wrap_err("Error serializing state")?;
@@ -101,13 +101,13 @@ impl State {
                     == ErrorKind::PermissionDenied =>
             {
                 return Err(error).wrap_err(
-                    "Permission denied writing scruters.json",
-                );
+                "Permission denied writing scruters.json",
+            );
             }
             Err(error) => {
                 return Err(error).wrap_err(
-                    "Error opening scruters.json for writing",
-                );
+                "Error opening scruters.json for writing",
+            );
             }
         };
 
@@ -116,28 +116,5 @@ impl State {
             .wrap_err("Error writing scruters.json")?;
 
         Ok(())
-    }
-
-    pub async fn handle_message(
-        &mut self,
-        message: Message,
-    ) -> Result<Option<Message>> {
-        match message {
-            Message::Quit
-            | Message::KeyEvent(KeyEvent {
-                code: KeyCode::Char('q'),
-                modifiers: KeyModifiers::NONE,
-                ..
-            }) => {
-                self.save_to_file()
-                    .await
-                    .wrap_err("Error saving state")?;
-
-                self.current_screen = None;
-            }
-            Message::KeyEvent(_) => {}
-        }
-
-        Ok(None)
     }
 }

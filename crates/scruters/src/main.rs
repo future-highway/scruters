@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
         LevelFilter::Trace,
     );
 
-    trace!("Starting Scruters");
+    trace!("Starting...");
 
     let mut terminal = tui::init()?;
 
