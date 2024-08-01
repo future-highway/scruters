@@ -11,7 +11,7 @@ use message::Message;
 use state::State;
 use std::panic;
 use tokio_stream::StreamExt as _;
-use tracing::{debug, trace};
+use tracing::{debug, log::LevelFilter, trace};
 
 mod message;
 mod state;
@@ -22,7 +22,17 @@ mod ui;
 async fn main() -> Result<()> {
     install_hooks()?;
 
-    // TODO: Initialize tracing
+    tui_logger::init_logger(LevelFilter::Trace)
+        .wrap_err("Error initializing logger")?;
+
+    // TODO: Make these configurable via CLI arguments
+    tui_logger::set_default_level(LevelFilter::Info);
+    tui_logger::set_level_for_target(
+        "scruters",
+        LevelFilter::Trace,
+    );
+
+    trace!("Starting Scruters");
 
     let mut terminal = tui::init()?;
 
@@ -34,7 +44,7 @@ async fn main() -> Result<()> {
 
     while state.current_screen.is_some() {
         _ = terminal
-            .draw(|frame| ui::draw(&state, frame))
+            .draw(|frame| ui::draw(&mut state, frame))
             .wrap_err("Error drawing UI")?;
 
         #[allow(clippy::integer_division_remainder_used)]

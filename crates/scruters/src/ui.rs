@@ -1,23 +1,14 @@
-use crate::state::State;
-use ratatui::{
-    prelude::*,
-    widgets::{Block, Borders, Paragraph, Wrap},
-    Frame,
-};
+use crate::state::{Screen, State};
+use ratatui::Frame;
 
-pub fn draw(_state: &State, frame: &mut Frame<'_>) {
-    let chunks = Layout::default()
-        .constraints([Constraint::Percentage(100)].as_ref())
-        .split(frame.size());
+mod logs;
 
-    let text = vec![
-        Line::raw("Hello, world!"),
-        Line::raw("Press 'q' to quit."),
-    ];
+pub fn draw(state: &mut State, frame: &mut Frame<'_>) {
+    let Some(screen) = state.current_screen.as_ref() else {
+        return;
+    };
 
-    let text = Paragraph::new(text)
-        .block(Block::default().borders(Borders::ALL))
-        .wrap(Wrap { trim: false });
-
-    frame.render_widget(text, chunks[0]);
+    match screen {
+        Screen::Logs => logs::draw(state, frame),
+    }
 }

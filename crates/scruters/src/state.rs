@@ -3,7 +3,9 @@
 //! The state is saved and loaded from the 'scruters.json'
 //! file. It is designed to be version controlled.
 
-use self::{screen::Screen, testing::TestingState};
+pub(crate) use self::{
+    screen::Screen, testing::TestingState,
+};
 use crate::message::Message;
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};

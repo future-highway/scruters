@@ -1,7 +1,7 @@
 #[derive(Debug, Default)]
 pub(crate) enum Screen {
     #[default]
-    TuiLogger,
+    Logs,
 }
 
 #[allow(clippy::unnecessary_wraps)]
