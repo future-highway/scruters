@@ -10,6 +10,10 @@ use crossterm::event::{Event, EventStream};
 use message::Message;
 use state::State;
 use std::panic;
+use tokio::signal::{
+    self,
+    unix::{signal, SignalKind},
+};
 use tokio_stream::StreamExt as _;
 use tracing::{debug, log::LevelFilter, trace};
 
@@ -42,6 +46,11 @@ async fn main() -> Result<()> {
 
     let mut crossterm_events = EventStream::new();
 
+    let mut sig_int_events =
+        signal(SignalKind::interrupt()).wrap_err(
+            "Error creating SIGINT signal stream",
+        )?;
+
     while state.current_screen.is_some() {
         _ = terminal
             .draw(|frame| ui::draw(&mut state, frame))
@@ -63,6 +72,10 @@ async fn main() -> Result<()> {
                     },
                 }
             ),
+            _ = sig_int_events.recv() => {
+                trace!("Received SIGINT");
+                Some(Message::Quit)
+            },
         };
 
         while let Some(message) = maybe_message {

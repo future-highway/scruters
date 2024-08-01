@@ -48,8 +48,8 @@ impl State {
         match message {
             Message::Quit
             | Message::KeyEvent(KeyEvent {
-                code: KeyCode::Char('q'),
-                modifiers: KeyModifiers::NONE,
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::CONTROL,
                 ..
             }) => {
                 self.save_to_file()
