@@ -1,4 +1,4 @@
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub(crate) enum Screen {
     #[default]
     Testing,

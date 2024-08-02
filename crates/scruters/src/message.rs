@@ -1,8 +1,10 @@
+use crate::state::Screen;
 use crossterm::event::KeyEvent;
 
 pub(crate) enum Message {
-    Quit,
     KeyEvent(KeyEvent),
+    GoToScreen(Screen),
+    Quit,
     Testing(TestingMessage),
 }
 

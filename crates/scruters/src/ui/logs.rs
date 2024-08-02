@@ -2,10 +2,9 @@ use crate::state::State;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Color, Style},
     symbols::border,
-    text::{Line, Span},
-    widgets::{Block, Padding, Paragraph, Widget as _},
+    widgets::{Block, Widget as _},
     Frame,
 };
 use tracing::error;
@@ -38,8 +37,8 @@ pub fn draw(state: &mut State, frame: &mut Frame<'_>) {
         frame.buffer_mut(),
     );
 
-    draw_action_bar(
-        state,
+    super::draw_action_bar(
+        &[("<esc>", "back")],
         action_bar_area,
         frame.buffer_mut(),
     );
@@ -64,23 +63,4 @@ fn draw_tui_logger_widget(
         .output_separator(' ')
         .state(&state)
         .render(area, buf);
-}
-
-fn draw_action_bar(
-    _state: &mut State,
-    area: Rect,
-    buf: &mut Buffer,
-) {
-    let block =
-        Block::default().padding(Padding::symmetric(1, 0));
-
-    let actions = vec![
-        Span::styled("<esc>", Style::new().bold()),
-        Span::raw(" back"),
-    ];
-
-    let actions = Line::from(actions);
-    let actions = Paragraph::new(actions).block(block);
-
-    actions.render(area, buf);
 }
