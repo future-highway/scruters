@@ -11,6 +11,8 @@ repository.workspace = true
 [dependencies]
 color-eyre.workspace = true
 crossterm.workspace = true
+futures.workspace = true
+if_chain.workspace = true
 itertools.workspace = true
 ratatui.workspace = true
 serde.workspace = true

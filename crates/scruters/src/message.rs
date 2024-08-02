@@ -1,4 +1,7 @@
-use crate::state::Screen;
+use crate::state::{
+    testing::{groups::GroupName, TestName},
+    Screen,
+};
 use crossterm::event::KeyEvent;
 
 pub(crate) enum Message {
@@ -15,5 +18,7 @@ impl From<KeyEvent> for Message {
 }
 
 pub(crate) enum TestingMessage {
+    GroupRunOutput(GroupName, String),
+    ReplaceGroupTests(GroupName, Vec<TestName>),
     RunGroup,
 }

@@ -6,6 +6,7 @@ use crate::message::Message;
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::UnboundedSender;
 
 #[allow(clippy::struct_field_names)]
 #[allow(clippy::partial_pub_fields)]
@@ -53,6 +54,7 @@ impl State {
     pub async fn handle_message(
         &mut self,
         message: Message,
+        message_tx: UnboundedSender<Message>,
     ) -> Result<Option<Message>> {
         match message {
             Message::GoToScreen(screen) => {
@@ -100,7 +102,7 @@ impl State {
             Message::Testing(message) => {
                 return self
                     .testing_state
-                    .handle_message(message)
+                    .handle_message(message, message_tx)
                     .await;
             }
         }

@@ -10,7 +10,10 @@ use crossterm::event::{Event, EventStream};
 use message::Message;
 use state::State;
 use std::panic;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::{
+    signal::unix::{signal, SignalKind},
+    sync::mpsc,
+};
 use tokio_stream::StreamExt as _;
 use tracing::{debug, log::LevelFilter, trace};
 
@@ -50,6 +53,9 @@ async fn main() -> Result<()> {
             "Error creating SIGINT signal stream",
         )?;
 
+    let (message_tx, mut message_rx) =
+        mpsc::unbounded_channel();
+
     while state.current_screen.is_some() {
         _ = terminal
             .draw(|frame| ui::draw(&mut state, frame))
@@ -71,6 +77,11 @@ async fn main() -> Result<()> {
                     },
                 }
             ),
+            message = message_rx.recv() => message
+                .map_or_else(|| {
+                    tracing::error!("Message channel closed");
+                    Some(Message::Quit)
+                }, Some),
             _ = sig_int_events.recv() => {
                 trace!("Received SIGINT");
                 Some(Message::Quit)
@@ -78,8 +89,9 @@ async fn main() -> Result<()> {
         };
 
         while let Some(message) = maybe_message {
-            maybe_message =
-                state.handle_message(message).await?;
+            maybe_message = state
+                .handle_message(message, message_tx.clone())
+                .await?;
         }
     }
 
