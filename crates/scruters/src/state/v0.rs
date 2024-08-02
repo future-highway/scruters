@@ -23,27 +23,43 @@ pub struct State {
     pub logs_state: LogsState,
 }
 
-impl Default for State {
-    fn default() -> Self {
-        Self {
+impl State {
+    pub fn new(
+        message_tx: UnboundedSender<Message>,
+    ) -> Self {
+        let mut state = Self {
             current_screen: Some(Screen::default()),
             testing_state: TestingState::default(),
             logs_state: LogsState::default(),
-        }
-    }
-}
+        };
 
-impl State {
-    pub async fn load_from_file() -> Result<Option<Self>> {
+        state.init(message_tx);
+
+        state
+    }
+
+    pub async fn load_from_file(
+        message_tx: UnboundedSender<Message>,
+    ) -> Result<Option<Self>> {
         let state = LoadState::load_from_file().await?;
 
         let Some(state) = state else {
             return Ok(None);
         };
 
-        match state {
-            LoadState::V0(state) => Ok(Some(state)),
-        }
+        let LoadState::V0(mut state) = state;
+
+        state.init(message_tx);
+
+        Ok(Some(state))
+    }
+
+    fn init(
+        &mut self,
+        message_tx: UnboundedSender<Message>,
+    ) {
+        self.testing_state
+            .add_auto_generated_groups(message_tx);
     }
 
     pub async fn save_to_file(&self) -> Result<()> {

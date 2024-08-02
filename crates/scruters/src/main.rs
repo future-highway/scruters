@@ -1,6 +1,8 @@
 //! Scruters is a TUI with various tools for Rust
 //! development.
 
+extern crate alloc;
+
 use color_eyre::{
     config::HookBuilder,
     eyre::{self, Context},
@@ -12,7 +14,7 @@ use state::State;
 use std::panic;
 use tokio::{
     signal::unix::{signal, SignalKind},
-    sync::mpsc,
+    sync::mpsc::{self, UnboundedSender},
 };
 use tokio_stream::StreamExt as _;
 use tracing::{debug, log::LevelFilter, trace};
@@ -42,7 +44,10 @@ async fn main() -> Result<()> {
 
     let mut terminal = tui::init()?;
 
-    let mut state = initialize_state()
+    let (message_tx, mut message_rx) =
+        mpsc::unbounded_channel();
+
+    let mut state = initialize_state(message_tx.clone())
         .await
         .wrap_err("Error initializing state")?;
 
@@ -52,9 +57,6 @@ async fn main() -> Result<()> {
         signal(SignalKind::interrupt()).wrap_err(
             "Error creating SIGINT signal stream",
         )?;
-
-    let (message_tx, mut message_rx) =
-        mpsc::unbounded_channel();
 
     while state.current_screen.is_some() {
         _ = terminal
@@ -130,17 +132,20 @@ fn install_hooks() -> Result<()> {
     Ok(())
 }
 
-async fn initialize_state() -> Result<State> {
-    let state = if let Some(state) = State::load_from_file()
-        .await
-        .wrap_err("Error loading state")?
+async fn initialize_state(
+    message_tx: UnboundedSender<Message>,
+) -> Result<State> {
+    let state = if let Some(state) =
+        State::load_from_file(message_tx.clone())
+            .await
+            .wrap_err("Error loading state")?
     {
         debug!("Loaded state from file");
         state
     } else {
         trace!("Creating new state");
 
-        let state = State::default();
+        let state = State::new(message_tx);
 
         state
             .save_to_file()

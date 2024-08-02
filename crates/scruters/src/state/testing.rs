@@ -36,6 +36,17 @@ pub(crate) struct TestingState {
 }
 
 impl TestingState {
+    pub(super) fn add_auto_generated_groups(
+        &mut self,
+        message_tx: UnboundedSender<Message>,
+    ) {
+        let mut groups =
+            Group::all_auto_generated_groups(message_tx);
+
+        groups.append(&mut self.groups);
+        self.groups = groups;
+    }
+
     pub(super) fn handle_key_event(
         &mut self,
         key_event: KeyEvent,

@@ -30,7 +30,8 @@ pub(crate) fn spawn_command(
             anyhow!("failed to get stderr from command")
         })?;
 
-    tokio::spawn(async move {
+    #[allow(clippy::integer_division_remainder_used)]
+    drop(tokio::spawn(async move {
         tokio::select! {
             () = cancellation_token.cancelled() => {
                 debug!("Command was cancelled");
@@ -49,7 +50,7 @@ pub(crate) fn spawn_command(
                 }
             }
         }
-    });
+    }));
 
     Ok((stdout, stderr))
 }
