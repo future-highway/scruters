@@ -12,6 +12,12 @@ use serde::{Deserialize, Serialize};
 )]
 pub(crate) struct GroupName(Cow<'static, str>);
 
+impl GroupName {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 impl From<&'static str> for GroupName {
     fn from(s: &'static str) -> Self {
         Self(s.into())

@@ -1,6 +1,7 @@
 pub(crate) use self::{
     active_component::ActiveComponent, test_name::TestName,
 };
+use super::helpers::default_list_state;
 use crate::message::{Message, TestingMessage};
 use color_eyre::{eyre::Context as _, Result};
 use core::time::Duration;
@@ -21,18 +22,30 @@ mod test_name;
 
 #[allow(clippy::partial_pub_fields)]
 #[allow(clippy::unsafe_derive_deserialize)]
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct TestingState {
     #[serde(skip, default)]
     pub active_component: ActiveComponent,
-    #[serde(skip, default)]
+    #[serde(skip, default = "default_list_state")]
     pub groups_component_state: ListState,
-    #[serde(skip, default)]
+    #[serde(skip, default = "default_list_state")]
     pub tests_component_state: ListState,
     #[serde(skip, default)]
     pub groups: Vec<Group>,
     #[serde(skip, default)]
     task: Option<(JoinHandle<()>, CancellationToken)>,
+}
+
+impl Default for TestingState {
+    fn default() -> Self {
+        Self {
+            active_component: ActiveComponent::Groups,
+            groups_component_state: default_list_state(),
+            tests_component_state: default_list_state(),
+            groups: Vec::new(),
+            task: None,
+        }
+    }
 }
 
 impl TestingState {

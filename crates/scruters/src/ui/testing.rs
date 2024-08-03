@@ -4,7 +4,10 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Style, Stylize},
     symbols::border,
-    widgets::{Block, List, ListItem, StatefulWidget},
+    text::Line,
+    widgets::{
+        Block, List, ListItem, Padding, StatefulWidget,
+    },
     Frame,
 };
 
@@ -62,14 +65,23 @@ fn draw_groups_widget(
         .border_set(border::ROUNDED)
         .border_style(border_style)
         .title("")
-        .title(" Groups ");
+        .title(" Groups ")
+        .padding(Padding::symmetric(2, 1));
 
-    let mut list = List::new(Vec::<ListItem<'_>>::new())
+    let list_items = testing_state
+        .groups
+        .iter()
+        .map(|group| {
+            ListItem::new(Line::raw(group.name.as_str()))
+        })
+        .collect::<Vec<_>>();
+
+    let mut list = List::new(list_items)
         .block(block)
         .highlight_symbol("> ");
 
     if is_active {
-        list = list.style(Style::new().blue());
+        list = list.highlight_style(Style::new().on_blue());
     }
 
     list.render(

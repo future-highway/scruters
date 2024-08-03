@@ -15,6 +15,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt as _},
 };
 
+mod helpers;
 pub(crate) mod logs;
 mod screen;
 pub(crate) mod testing;
