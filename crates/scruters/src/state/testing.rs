@@ -70,16 +70,47 @@ impl TestingState {
                 if self.active_component
                     == ActiveComponent::Groups =>
             {
-                return Some(Message::Testing(
+                Some(Message::Testing(
                     TestingMessage::RunGroup,
-                ));
+                ))
+            }
+            KeyCode::Down
+                if self.active_component
+                    == ActiveComponent::Groups =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::NextGroup,
+                ))
+            }
+            KeyCode::End
+                if self.active_component
+                    == ActiveComponent::Groups =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::LastGroup,
+                ))
+            }
+            KeyCode::Home
+                if self.active_component
+                    == ActiveComponent::Groups =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::FirstGroup,
+                ))
+            }
+            KeyCode::Up
+                if self.active_component
+                    == ActiveComponent::Groups =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::PreviousGroup,
+                ))
             }
             _ => {
                 debug!(?key_event, "Unhandled key event");
+                None
             }
-        };
-
-        None
+        }
     }
 
     pub(super) async fn handle_message(
@@ -88,6 +119,9 @@ impl TestingState {
         message_tx: UnboundedSender<Message>,
     ) -> Result<Option<Message>> {
         match message {
+            TestingMessage::FirstGroup => {
+                self.groups_component_state.select_first();
+            }
             TestingMessage::GroupRunOutput(
                 group_name,
                 line,
@@ -104,6 +138,16 @@ impl TestingState {
                 };
 
                 group.push_output(line);
+            }
+            TestingMessage::LastGroup => {
+                self.groups_component_state.select_last();
+            }
+            TestingMessage::NextGroup => {
+                self.groups_component_state.select_next();
+            }
+            TestingMessage::PreviousGroup => {
+                self.groups_component_state
+                    .select_previous();
             }
             TestingMessage::ReplaceGroupTests(
                 group_name,

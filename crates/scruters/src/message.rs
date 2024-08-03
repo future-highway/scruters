@@ -18,7 +18,11 @@ impl From<KeyEvent> for Message {
 }
 
 pub(crate) enum TestingMessage {
+    FirstGroup,
     GroupRunOutput(GroupName, String),
+    LastGroup,
+    NextGroup,
+    PreviousGroup,
     ReplaceGroupTests(GroupName, Vec<TestName>),
     RunGroup,
 }
