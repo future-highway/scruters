@@ -15,7 +15,7 @@ impl<'a> CargoWatchTestArgs<'a> {
             Command::new(self.test_args.cargo_program);
 
         _ = command.args(["watch", "-x"]);
-        _ = command.args(self.test_args.to_args());
+        _ = command.arg(self.test_args.to_args().join(" "));
 
         command
     }

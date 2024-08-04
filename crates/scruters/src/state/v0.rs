@@ -3,10 +3,11 @@ use super::{
     SaveState, Screen,
 };
 use crate::message::Message;
+use cargo_metadata::Metadata;
 use color_eyre::{eyre::Context, Result};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{mpsc::UnboundedSender, watch};
 
 #[allow(clippy::struct_field_names)]
 #[allow(clippy::partial_pub_fields)]
@@ -24,42 +25,31 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(
-        message_tx: UnboundedSender<Message>,
-    ) -> Self {
-        let mut state = Self {
+    pub fn new() -> Self {
+        Self {
             current_screen: Some(Screen::default()),
             testing_state: TestingState::default(),
             logs_state: LogsState::default(),
-        };
-
-        state.init(message_tx);
-
-        state
+        }
     }
 
-    pub async fn load_from_file(
-        message_tx: UnboundedSender<Message>,
-    ) -> Result<Option<Self>> {
+    pub async fn load_from_file() -> Result<Option<Self>> {
         let state = LoadState::load_from_file().await?;
 
         let Some(state) = state else {
             return Ok(None);
         };
 
-        let LoadState::V0(mut state) = state;
-
-        state.init(message_tx);
-
+        let LoadState::V0(state) = state;
         Ok(Some(state))
     }
 
-    fn init(
+    pub fn init(
         &mut self,
+        metadata_rx: watch::Receiver<Metadata>,
         message_tx: UnboundedSender<Message>,
     ) {
-        self.testing_state
-            .add_auto_generated_groups(message_tx);
+        self.testing_state.init(metadata_rx, message_tx);
     }
 
     pub async fn save_to_file(&self) -> Result<()> {

@@ -3,6 +3,7 @@
 
 extern crate alloc;
 
+use cargo_metadata::MetadataCommand;
 use color_eyre::{
     config::HookBuilder,
     eyre::{self, Context},
@@ -14,7 +15,10 @@ use state::State;
 use std::panic;
 use tokio::{
     signal::unix::{signal, SignalKind},
-    sync::mpsc::{self, UnboundedSender},
+    sync::{
+        mpsc::{self, UnboundedSender},
+        watch,
+    },
 };
 use tokio_stream::StreamExt as _;
 use tracing::{debug, log::LevelFilter, trace};
@@ -34,10 +38,10 @@ async fn main() -> Result<()> {
         .wrap_err("Error initializing logger")?;
 
     // TODO: Make these configurable via CLI arguments
-    tui_logger::set_default_level(LevelFilter::Info);
+    tui_logger::set_default_level(LevelFilter::Debug);
     tui_logger::set_level_for_target(
-        "scruters",
-        LevelFilter::Trace,
+        "scruters*",
+        LevelFilter::Debug,
     );
 
     trace!("Starting...");
@@ -135,8 +139,8 @@ fn install_hooks() -> Result<()> {
 async fn initialize_state(
     message_tx: UnboundedSender<Message>,
 ) -> Result<State> {
-    let state = if let Some(state) =
-        State::load_from_file(message_tx.clone())
+    let mut state = if let Some(state) =
+        State::load_from_file()
             .await
             .wrap_err("Error loading state")?
     {
@@ -145,7 +149,7 @@ async fn initialize_state(
     } else {
         trace!("Creating new state");
 
-        let state = State::new(message_tx);
+        let state = State::new();
 
         state
             .save_to_file()
@@ -156,6 +160,18 @@ async fn initialize_state(
 
         state
     };
+
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .context("Failed to get cargo metadata")?;
+
+    let (metadata_tx, metadata_rx) =
+        watch::channel(metadata);
+
+    state.init(metadata_rx, message_tx);
+
+    // TODO: watch for changes to metadata and update state
 
     Ok(state)
 }

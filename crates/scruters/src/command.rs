@@ -13,6 +13,8 @@ pub(crate) fn spawn_command(
     mut command: Command,
     cancellation_token: CancellationToken,
 ) -> Result<(ChildStdout, ChildStderr)> {
+    debug!(?command, "Spawning command");
+
     let mut child = command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -42,7 +44,11 @@ pub(crate) fn spawn_command(
             result = child.wait() => match result {
                 Ok(exit_status) => {
                     if !exit_status.success() {
-                        error!(?exit_status, "Command returned non-success exit status");
+                        error!(
+                            ?command,
+                            ?exit_status,
+                            "Command returned non-success exit status"
+                        );
                     }
                 }
                 Err(error) => {

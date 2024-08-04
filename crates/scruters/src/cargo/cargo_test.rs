@@ -1,3 +1,4 @@
+use alloc::borrow::Cow;
 use tokio::process::Command;
 
 pub(crate) struct CargoTestArgs<'a> {
@@ -5,7 +6,7 @@ pub(crate) struct CargoTestArgs<'a> {
     pub color: bool,
     pub list: bool,
     pub fail_fast: bool,
-    pub args: Option<&'a [&'a str]>,
+    pub args: Option<Cow<'static, [Cow<'static, str>]>>,
     pub test_args: Option<&'a [&'a str]>,
 }
 
@@ -34,7 +35,8 @@ impl CargoTestArgs<'_> {
             cargo_args.extend(["--color", "always"]);
         }
 
-        if let Some(args) = self.args {
+        if let Some(args) = self.args.as_ref() {
+            let args = args.iter().map(AsRef::as_ref);
             cargo_args.extend(args);
         }
 
