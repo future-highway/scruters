@@ -64,7 +64,10 @@ impl State {
     ) -> Result<Option<Message>> {
         match message {
             Message::GoToScreen(screen) => {
-                self.current_screen = Some(screen);
+                if !matches!(self.current_screen, Some(c) if c == screen)
+                {
+                    self.current_screen = Some(screen);
+                }
             }
             Message::Quit
             | Message::KeyEvent(KeyEvent {
@@ -83,12 +86,17 @@ impl State {
                 modifiers: KeyModifiers::NONE,
                 ..
             }) => {
-                let previous_screen = self
-                    .current_screen
-                    .replace(Screen::Logs);
+                if !matches!(
+                    self.current_screen,
+                    Some(Screen::Logs),
+                ) {
+                    let previous_screen = self
+                        .current_screen
+                        .replace(Screen::Logs);
 
-                self.logs_state.previous_screen =
-                    previous_screen.unwrap_or_default();
+                    self.logs_state.previous_screen =
+                        previous_screen.unwrap_or_default();
+                }
             }
             Message::KeyEvent(key_event) => {
                 match self.current_screen {
