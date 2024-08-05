@@ -133,10 +133,7 @@ impl TestingState {
                     TestingMessage::SelectPreviousGroup,
                 ))
             }
-            _ => {
-                debug!(?key_event, "Unhandled key event");
-                None
-            }
+            _ => None,
         }
     }
 

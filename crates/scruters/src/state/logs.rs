@@ -2,7 +2,6 @@ use super::Screen;
 use crate::message::Message;
 use crossterm::event::{KeyCode, KeyEvent};
 use serde::{Deserialize, Serialize};
-use tracing::debug;
 
 #[allow(clippy::empty_structs_with_brackets)]
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -25,10 +24,7 @@ impl LogsState {
                     self.previous_screen,
                 ))
             }
-            _ => {
-                debug!(?key_event, "Unhandled key event");
-                None
-            }
+            _ => None,
         }
     }
 }

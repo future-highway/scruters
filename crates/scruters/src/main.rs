@@ -10,18 +10,22 @@ use color_eyre::{
     Result,
 };
 use crossterm::event::{Event, EventStream};
+use ignore_files::IgnoreFilter;
 use message::Message;
 use state::State;
-use std::panic;
+use std::{env::set_current_dir, panic, path::Path};
 use tokio::{
     signal::unix::{signal, SignalKind},
     sync::{
+        broadcast::{self, error::RecvError},
         mpsc::{self, UnboundedSender},
         watch,
     },
 };
 use tokio_stream::StreamExt as _;
-use tracing::{debug, log::LevelFilter, trace};
+use tracing::{debug, error, log::LevelFilter, trace};
+use watchexec::Watchexec;
+use watchexec_filterer_ignore::IgnoreFilterer;
 
 mod cargo;
 mod command;
@@ -39,21 +43,51 @@ async fn main() -> Result<()> {
 
     // TODO: Make these configurable via CLI arguments
     tui_logger::set_default_level(LevelFilter::Debug);
+
     tui_logger::set_level_for_target(
-        "scruters*",
-        LevelFilter::Debug,
+        "watchexec::action::worker",
+        LevelFilter::Off,
     );
 
     trace!("Starting...");
+
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .wrap_err("Failed to get cargo metadata")?;
+
+    let root = metadata.workspace_root.as_std_path();
+
+    // This is important for watchexec to work correctly
+    set_current_dir(root).wrap_err(
+        "Failed to set current directory to workspace root",
+    )?;
+
+    let (files, _) = ignore_files::from_origin(root).await;
+
+    let mut ignore_filter = IgnoreFilter::empty(root);
+    for file in &files {
+        ignore_filter.add_file(file).await.wrap_err(
+            "Failed to add file to ignore filter",
+        )?;
+    }
+
+    let watch_broadcaster =
+        watchexec_broadcast(root, ignore_filter).wrap_err(
+            "Failed to create watch broadcaster",
+        )?;
 
     let mut terminal = tui::init()?;
 
     let (message_tx, mut message_rx) =
         mpsc::unbounded_channel();
 
-    let mut state = initialize_state(message_tx.clone())
-        .await
-        .wrap_err("Error initializing state")?;
+    let mut state = initialize_state(
+        watch_broadcaster.subscribe(),
+        message_tx.clone(),
+    )
+    .await
+    .wrap_err("Error initializing state")?;
 
     let mut crossterm_events = EventStream::new();
 
@@ -136,7 +170,51 @@ fn install_hooks() -> Result<()> {
     Ok(())
 }
 
+fn watchexec_broadcast(
+    root: &Path,
+    ignore_filter: IgnoreFilter,
+) -> Result<broadcast::Sender<()>> {
+    let (tx, _rx) = broadcast::channel(1);
+    let tx_clone = tx.clone();
+
+    let watch = Watchexec::new(move |handler| {
+        _ = tx_clone.send(());
+        handler
+    })
+    .wrap_err("Failed to create watch handler")?;
+
+    _ = watch
+        .config
+        .filterer(IgnoreFilterer(ignore_filter))
+        .pathset(vec![root]);
+
+    drop(tokio::spawn(async move {
+        match watch.main().await {
+            Ok(inner) => match inner {
+                Ok(()) => {
+                    debug!("Watch handler exited");
+                }
+                Err(error) => {
+                    error!(
+                        ?error,
+                        "Watch handler exited with error"
+                    );
+                }
+            },
+            Err(error) => {
+                error!(
+                    ?error,
+                    "Watch handler exited with error"
+                );
+            }
+        }
+    }));
+
+    Ok(tx)
+}
+
 async fn initialize_state(
+    mut watch_rx: broadcast::Receiver<()>,
     message_tx: UnboundedSender<Message>,
 ) -> Result<State> {
     let mut state = if let Some(state) =
@@ -164,14 +242,41 @@ async fn initialize_state(
     let metadata = MetadataCommand::new()
         .no_deps()
         .exec()
-        .context("Failed to get cargo metadata")?;
+        .wrap_err("Failed to get cargo metadata")?;
 
     let (metadata_tx, metadata_rx) =
         watch::channel(metadata);
 
-    state.init(metadata_rx, message_tx);
+    drop(tokio::spawn(async move {
+        loop {
+            match watch_rx.recv().await {
+                Ok(()) => {}
+                Err(RecvError::Lagged(_)) => continue,
+                Err(_) => break,
+            }
 
-    // TODO: watch for changes to metadata and update state
+            match MetadataCommand::new().no_deps().exec() {
+                Ok(metadata) => {
+                    if let Err(error) =
+                        metadata_tx.send(metadata)
+                    {
+                        error!(
+                            ?error,
+                            "Failed to send metadata to watch handler",
+                        );
+                    }
+                }
+                Err(error) => {
+                    error!(
+                        ?error,
+                        "Failed to get cargo metadata",
+                    );
+                }
+            };
+        }
+    }));
+
+    state.init(metadata_rx, message_tx);
 
     Ok(state)
 }

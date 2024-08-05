@@ -14,6 +14,7 @@ color-eyre.workspace = true
 crossterm.workspace = true
 futures.workspace = true
 if_chain.workspace = true
+ignore-files.workspace = true
 itertools.workspace = true
 ratatui.workspace = true
 serde.workspace = true
@@ -23,6 +24,8 @@ tokio-stream.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
 tui-logger.workspace = true
+watchexec.workspace = true
+watchexec-filterer-ignore.workspace = true
 
 [lints]
 workspace = true
