@@ -13,9 +13,11 @@ use crate::{
     command::spawn_command,
     message::{Message, TestingMessage},
 };
-use alloc::borrow::Cow;
+use alloc::{borrow::Cow, collections::VecDeque};
 use color_eyre::eyre::{Context, Result};
+use core::ops::{Deref, DerefMut};
 use futures::stream::select;
+use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncBufReadExt as _, BufReader},
     sync::mpsc::UnboundedSender,
@@ -82,4 +84,54 @@ pub(super) fn run_group<Group: AnyGroup>(
     });
 
     Ok((join_handle, cancellation_token))
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct Groups(VecDeque<Group>);
+
+impl Serialize for Groups {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let filtered: Vec<&Group> = self
+            .0
+            .iter()
+            .filter(|group| group.should_serialize())
+            .collect();
+
+        filtered.serialize(serializer)
+    }
+}
+
+#[allow(clippy::missing_trait_methods)]
+impl<'de> Deserialize<'de> for Groups {
+    fn deserialize<D>(
+        deserializer: D,
+    ) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let groups: VecDeque<Group> =
+            VecDeque::deserialize(deserializer)?;
+
+        Ok(Self(groups))
+    }
+}
+
+impl Deref for Groups {
+    type Target = VecDeque<Group>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Groups {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
