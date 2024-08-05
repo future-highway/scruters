@@ -9,11 +9,12 @@ use color_eyre::{
     eyre::{self, Context},
     Result,
 };
+use core::time::Duration;
 use crossterm::event::{Event, EventStream};
 use ignore_files::IgnoreFilter;
 use message::Message;
 use std::{env::set_current_dir, panic};
-use tokio::sync::mpsc;
+use tokio::{sync::mpsc, time::interval};
 use tokio_stream::StreamExt as _;
 use tracing::{
     debug, level_filters::LevelFilter,
@@ -97,6 +98,8 @@ async fn main() -> Result<()> {
     .wrap_err("Error initializing state")?;
 
     let mut crossterm_events = EventStream::new();
+    let mut tick_interval =
+        interval(Duration::from_secs(1));
 
     while state.current_screen.is_some() {
         _ = terminal
@@ -105,6 +108,10 @@ async fn main() -> Result<()> {
 
         #[allow(clippy::integer_division_remainder_used)]
         let mut maybe_message = tokio::select! {
+            _ = tick_interval.tick() => {
+                trace!("Tick");
+                None
+            },
             event = crossterm_events.next() => event.map_or_else(
                 || {
                     debug!("Crossterm event stream ended");
