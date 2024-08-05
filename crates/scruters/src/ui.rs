@@ -24,7 +24,7 @@ pub fn draw(state: &mut State, frame: &mut Frame<'_>) {
 }
 
 fn draw_action_bar(
-    actions: &'static [(&'static str, &'static str)],
+    actions: &[(&'static str, &'static str)],
     area: Rect,
     buf: &mut Buffer,
 ) {

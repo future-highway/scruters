@@ -109,12 +109,32 @@ impl TestingState {
                     TestingMessage::SelectNextGroup,
                 ))
             }
+            KeyCode::Esc
+                if self.active_component
+                    == ActiveComponent::Tests =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::SetActiveComponent(
+                        ActiveComponent::Groups,
+                    ),
+                ))
+            }
             KeyCode::End
                 if self.active_component
                     == ActiveComponent::Groups =>
             {
                 Some(Message::Testing(
                     TestingMessage::SelectLastGroup,
+                ))
+            }
+            KeyCode::Enter
+                if self.active_component
+                    == ActiveComponent::Groups =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::SetActiveComponent(
+                        ActiveComponent::Tests,
+                    ),
                 ))
             }
             KeyCode::Home
@@ -198,6 +218,11 @@ impl TestingState {
                         .wrap_err("Failed to run group")?,
                 );
             }
+            TestingMessage::SetActiveComponent(
+                component,
+            ) => {
+                self.active_component = component;
+            }
             TestingMessage::SelectFirstGroup => {
                 self.groups_component_state.select_first();
             }
@@ -228,6 +253,15 @@ impl TestingState {
                     Err(i) => {
                         self.groups.insert(i, group);
                     }
+                }
+
+                if self
+                    .tests_component_state
+                    .selected()
+                    .is_none()
+                {
+                    self.tests_component_state
+                        .select_first();
                 }
             }
         }

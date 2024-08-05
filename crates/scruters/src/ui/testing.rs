@@ -65,8 +65,21 @@ pub fn draw(state: &mut State, frame: &mut Frame<'_>) {
         frame.buffer_mut(),
     );
 
+    let actions = match state.testing_state.active_component
+    {
+        ActiveComponent::Groups => {
+            vec![
+                ("<enter>", "select"),
+                ("<r>", "run group"),
+            ]
+        }
+        ActiveComponent::Tests => {
+            vec![("<esc>", "back"), ("<r>", "run test")]
+        }
+    };
+
     super::draw_action_bar(
-        &[("<r>", "run")],
+        &actions,
         action_bar_area,
         frame.buffer_mut(),
     );
@@ -109,7 +122,7 @@ fn draw_groups_widget(
 
     let mut list = List::new(list_items)
         .block(block)
-        .highlight_symbol("  ");
+        .highlight_symbol("> ");
 
     if is_active {
         list = list.highlight_style(Style::new().on_blue());
@@ -170,7 +183,7 @@ fn draw_testing_widget(
 
     let mut list = List::new(list_items)
         .block(block)
-        .highlight_symbol("  ");
+        .highlight_symbol("> ");
 
     if is_active {
         list = list.highlight_style(Style::new().on_blue());
