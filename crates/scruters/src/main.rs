@@ -15,7 +15,13 @@ use message::Message;
 use std::{env::set_current_dir, panic};
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt as _;
-use tracing::{debug, log::LevelFilter, trace};
+use tracing::{
+    debug, level_filters::LevelFilter,
+    log::LevelFilter as LogLevelFilter, subscriber, trace,
+};
+use tracing_subscriber::{
+    filter::EnvFilter, layer::SubscriberExt, Registry,
+};
 
 mod cargo;
 mod command;
@@ -29,16 +35,24 @@ mod workspace;
 async fn main() -> Result<()> {
     install_hooks()?;
 
-    tui_logger::init_logger(LevelFilter::Trace)
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .parse("error,scruters=trace")
+        .expect("Failed to parse filter");
+
+    let subscriber = Registry::default()
+        .with(tui_logger::tracing_subscriber_layer())
+        .with(filter);
+
+    subscriber::set_global_default(subscriber).wrap_err(
+        "Error setting global default subscriber",
+    )?;
+
+    tui_logger::init_logger(LogLevelFilter::Debug)
         .wrap_err("Error initializing logger")?;
 
     // TODO: Make these configurable via CLI arguments
-    tui_logger::set_default_level(LevelFilter::Debug);
-
-    tui_logger::set_level_for_target(
-        "watchexec::action::worker",
-        LevelFilter::Off,
-    );
+    tui_logger::set_default_level(LogLevelFilter::Trace);
 
     trace!("Starting...");
 
