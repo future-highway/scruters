@@ -7,13 +7,21 @@ pub(crate) use self::{
     screen::Screen,
     v0::{State as StateV0, State},
 };
+use crate::message::Message;
+use cargo_metadata::MetadataCommand;
 use color_eyre::{eyre::Context as _, Result};
 use serde::{Deserialize, Serialize};
 use std::io::ErrorKind;
 use tokio::{
     fs::OpenOptions,
     io::{AsyncReadExt, AsyncWriteExt as _},
+    sync::{
+        broadcast::{self, error::RecvError},
+        mpsc::UnboundedSender,
+        watch,
+    },
 };
+use tracing::{debug, error, trace};
 
 mod helpers;
 pub(crate) mod logs;
@@ -22,6 +30,77 @@ pub(crate) mod testing;
 mod v0;
 
 const STATE_FILE_PATH: &str = "scruters.json";
+
+pub async fn initialize_state(
+    workspace_change_signal: broadcast::Sender<()>,
+    message_tx: UnboundedSender<Message>,
+) -> Result<State> {
+    let mut state = if let Some(state) =
+        State::load_from_file()
+            .await
+            .wrap_err("Error loading state")?
+    {
+        debug!("Loaded state from file");
+        state
+    } else {
+        trace!("Creating new state");
+
+        let state = State::new();
+
+        state
+            .save_to_file()
+            .await
+            .wrap_err("Error saving state")?;
+
+        debug!("Saved initial state to file");
+
+        state
+    };
+
+    let metadata = MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .wrap_err("Failed to get cargo metadata")?;
+
+    let (metadata_tx, metadata_rx) =
+        watch::channel(metadata);
+
+    let mut workspace_rx =
+        workspace_change_signal.subscribe();
+
+    drop(tokio::spawn(async move {
+        loop {
+            match workspace_rx.recv().await {
+                Ok(()) => {}
+                Err(RecvError::Lagged(_)) => continue,
+                Err(_) => break,
+            }
+
+            match MetadataCommand::new().no_deps().exec() {
+                Ok(metadata) => {
+                    if let Err(error) =
+                        metadata_tx.send(metadata)
+                    {
+                        error!(
+                            ?error,
+                            "Failed to send metadata to watch handler",
+                        );
+                    }
+                }
+                Err(error) => {
+                    error!(
+                        ?error,
+                        "Failed to get cargo metadata",
+                    );
+                }
+            };
+        }
+    }));
+
+    state.init(metadata_rx, message_tx);
+
+    Ok(state)
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "version", content = "state")]
