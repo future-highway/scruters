@@ -27,8 +27,12 @@ pub(crate) enum TestingMessage {
     RunSelectedGroup,
     SetActiveComponent(TestingActiveComponent),
     SelectFirstGroup,
+    SelectFirstTest,
     SelectLastGroup,
+    SelectLastTest,
     SelectNextGroup,
+    SelectNextTest,
     SelectPreviousGroup,
+    SelectPreviousTest,
     UpsertGroup(Group),
 }

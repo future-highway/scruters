@@ -109,6 +109,14 @@ impl TestingState {
                     TestingMessage::SelectNextGroup,
                 ))
             }
+            KeyCode::Down
+                if self.active_component
+                    == ActiveComponent::Tests =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::SelectNextTest,
+                ))
+            }
             KeyCode::Esc
                 if self.active_component
                     == ActiveComponent::Tests =>
@@ -125,6 +133,14 @@ impl TestingState {
             {
                 Some(Message::Testing(
                     TestingMessage::SelectLastGroup,
+                ))
+            }
+            KeyCode::End
+                if self.active_component
+                    == ActiveComponent::Tests =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::SelectLastTest,
                 ))
             }
             KeyCode::Enter
@@ -145,6 +161,14 @@ impl TestingState {
                     TestingMessage::SelectFirstGroup,
                 ))
             }
+            KeyCode::Home
+                if self.active_component
+                    == ActiveComponent::Tests =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::SelectFirstTest,
+                ))
+            }
             KeyCode::Up
                 if self.active_component
                     == ActiveComponent::Groups =>
@@ -153,10 +177,19 @@ impl TestingState {
                     TestingMessage::SelectPreviousGroup,
                 ))
             }
+            KeyCode::Up
+                if self.active_component
+                    == ActiveComponent::Tests =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::SelectPreviousTest,
+                ))
+            }
             _ => None,
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub(super) async fn handle_message(
         &mut self,
         message: TestingMessage,
@@ -226,14 +259,27 @@ impl TestingState {
             TestingMessage::SelectFirstGroup => {
                 self.groups_component_state.select_first();
             }
+            TestingMessage::SelectFirstTest => {
+                self.tests_component_state.select_first();
+            }
             TestingMessage::SelectLastGroup => {
                 self.groups_component_state.select_last();
+            }
+            TestingMessage::SelectLastTest => {
+                self.tests_component_state.select_last();
             }
             TestingMessage::SelectNextGroup => {
                 self.groups_component_state.select_next();
             }
+            TestingMessage::SelectNextTest => {
+                self.tests_component_state.select_next();
+            }
             TestingMessage::SelectPreviousGroup => {
                 self.groups_component_state
+                    .select_previous();
+            }
+            TestingMessage::SelectPreviousTest => {
+                self.tests_component_state
                     .select_previous();
             }
             TestingMessage::UpsertGroup(group) => {
