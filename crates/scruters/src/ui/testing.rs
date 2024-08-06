@@ -5,12 +5,13 @@ use crate::state::{
     },
     State,
 };
+use alloc::borrow::Cow;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Style, Stylize},
     symbols::border,
-    text::Line,
+    text::{Line, Span},
     widgets::{
         Block, List, ListItem, Paragraph, Scrollbar,
         ScrollbarOrientation, ScrollbarState,
@@ -178,6 +179,7 @@ fn draw_testing_widget(
         groups_component_state,
         tests_component_state,
         groups,
+        tests_output,
         ..
     } = &mut state.testing_state;
 
@@ -201,18 +203,44 @@ fn draw_testing_widget(
         .and_then(|index| groups.get(index));
 
     let selected_group_tests = selected_group
-        .map(|tests| {
-            tests
-                .tests()
-                .iter()
-                .map(|test| test.name())
-                .collect::<Vec<_>>()
-        })
+        .map(AnyGroup::tests)
         .unwrap_or_default();
+
+    let selected_group_test_names = selected_group_tests
+        .iter()
+        .map(|test| test.name())
+        .collect::<Vec<_>>();
+
+    let selected_group_test_names =
+        selected_group_test_names
+            .iter()
+            .map(Cow::as_ref)
+            .collect::<Vec<_>>();
 
     let list_items = selected_group_tests
         .iter()
-        .map(|test| ListItem::new(Line::raw(test.as_str())))
+        .zip(selected_group_test_names)
+        .map(|(test, name)| {
+            let status_mark =
+                tests_output.get(test).map_or_else(
+                    || Span::raw("?").yellow(),
+                    |(passed, _)| {
+                        if *passed {
+                            Span::raw("✓").green()
+                        } else {
+                            Span::raw("✗").red()
+                        }
+                    },
+                );
+
+            let test_name = Span::raw(name.as_str());
+
+            ListItem::new(Line::from(vec![
+                status_mark,
+                Span::raw(" "),
+                test_name,
+            ]))
+        })
         .collect::<Vec<_>>();
 
     let mut list = List::new(list_items)
@@ -294,7 +322,7 @@ fn draw_output_widget(
 
             selected_test
                 .and_then(|test| tests_output.get(test))
-                .map(|output| &**output)
+                .map(|(_, lines)| &**lines)
         }
     }
     .unwrap_or_default();

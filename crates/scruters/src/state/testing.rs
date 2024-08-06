@@ -47,7 +47,7 @@ pub(crate) struct TestingState {
     #[serde(default)]
     pub groups: Groups,
     #[serde(skip, default)]
-    pub tests_output: HashMap<Test, Vec<String>>,
+    pub tests_output: HashMap<Test, (bool, Vec<String>)>,
     #[serde(skip, default)]
     task: Option<(JoinHandle<()>, CancellationToken)>,
 }
