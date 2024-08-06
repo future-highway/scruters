@@ -1,4 +1,6 @@
-pub(crate) use self::active_component::ActiveComponent;
+pub(crate) use self::active_component::{
+    ActiveComponent, OutputSource,
+};
 use super::helpers::default_list_state;
 use crate::{
     message::{Message, TestingMessage},
@@ -16,6 +18,8 @@ use groups::{
 };
 use ratatui::widgets::ListState;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use tests::Test;
 use tokio::{
     sync::{mpsc::UnboundedSender, watch},
     task::JoinHandle,
@@ -43,6 +47,8 @@ pub(crate) struct TestingState {
     #[serde(default)]
     pub groups: Groups,
     #[serde(skip, default)]
+    pub tests_output: HashMap<Test, Vec<String>>,
+    #[serde(skip, default)]
     task: Option<(JoinHandle<()>, CancellationToken)>,
 }
 
@@ -53,6 +59,7 @@ impl Default for TestingState {
             groups_component_state: default_list_state(),
             tests_component_state: default_list_state(),
             groups: Groups::default(),
+            tests_output: HashMap::default(),
             task: None,
         }
     }
@@ -87,12 +94,67 @@ impl TestingState {
         )));
     }
 
+    #[allow(clippy::too_many_lines)]
     pub(super) fn handle_key_event(
         &mut self,
         key_event: KeyEvent,
     ) -> Option<Message> {
         #[allow(clippy::wildcard_enum_match_arm)]
         match key_event.code {
+            KeyCode::Char('1')
+                if !matches!(
+                    self.active_component,
+                    ActiveComponent::Groups,
+                ) =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::SetActiveComponent(
+                        ActiveComponent::Groups,
+                    ),
+                ))
+            }
+            KeyCode::Char('2')
+                if !matches!(
+                    self.active_component,
+                    ActiveComponent::Tests,
+                ) =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::SetActiveComponent(
+                        ActiveComponent::Tests,
+                    ),
+                ))
+            }
+            KeyCode::Char('3')
+                if !matches!(
+                    self.active_component,
+                    ActiveComponent::Output(_)
+                ) =>
+            {
+                let output_source = match self
+                    .active_component
+                {
+                    ActiveComponent::Groups => {
+                        OutputSource::Groups
+                    }
+                    ActiveComponent::Tests => {
+                        OutputSource::Tests
+                    }
+                    ActiveComponent::Output(_) => {
+                        unreachable!(
+                            "match guard should prevent this"
+                        )
+                    }
+                };
+
+                Some(Message::Testing(
+                    TestingMessage::SetActiveComponent(
+                        ActiveComponent::Output(
+                            output_source,
+                        ),
+                    ),
+                ))
+            }
             KeyCode::Char('r')
                 if self.active_component
                     == ActiveComponent::Groups =>

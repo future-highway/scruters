@@ -1,7 +1,7 @@
 use crate::state::{
     testing::{
         groups::AnyGroup, tests::AnyTest, ActiveComponent,
-        TestingState,
+        OutputSource, TestingState,
     },
     State,
 };
@@ -11,7 +11,11 @@ use ratatui::{
     style::{Style, Stylize},
     symbols::border,
     text::Line,
-    widgets::{Block, List, ListItem, StatefulWidget},
+    widgets::{
+        Block, List, ListItem, Paragraph, Scrollbar,
+        ScrollbarOrientation, ScrollbarState,
+        StatefulWidget, Widget, Wrap,
+    },
     Frame,
 };
 
@@ -49,9 +53,27 @@ pub fn draw(state: &mut State, frame: &mut Frame<'_>) {
         unreachable!("No groups area");
     };
 
-    let Some(testing_area) = areas.get(1).copied() else {
+    let Some(areas) = areas.get(1).copied() else {
+        tracing::error!("No right side area");
+        unreachable!("No right side area");
+    };
+
+    let areas = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(50),
+            Constraint::Fill(1),
+        ])
+        .split(areas);
+
+    let Some(testing_area) = areas.first().copied() else {
         tracing::error!("No testing area");
         unreachable!("No testing area");
+    };
+
+    let Some(output_area) = areas.get(1).copied() else {
+        tracing::error!("No output area");
+        unreachable!("No output area");
     };
 
     draw_groups_widget(
@@ -66,6 +88,12 @@ pub fn draw(state: &mut State, frame: &mut Frame<'_>) {
         frame.buffer_mut(),
     );
 
+    draw_output_widget(
+        state,
+        output_area,
+        frame.buffer_mut(),
+    );
+
     let actions = match state.testing_state.active_component
     {
         ActiveComponent::Groups => {
@@ -76,6 +104,9 @@ pub fn draw(state: &mut State, frame: &mut Frame<'_>) {
         }
         ActiveComponent::Tests => {
             vec![("<esc>", "back"), ("<r>", "run test")]
+        }
+        ActiveComponent::Output(_) => {
+            vec![("<esc>", "back")]
         }
     };
 
@@ -107,7 +138,7 @@ fn draw_groups_widget(
         .border_set(border::ROUNDED)
         .border_style(border_style)
         .title("")
-        .title(" Groups ");
+        .title(" [1] Groups ");
 
     let list_items = testing_state
         .groups
@@ -129,7 +160,8 @@ fn draw_groups_widget(
         list = list.highlight_style(Style::new().on_blue());
     }
 
-    list.render(
+    StatefulWidget::render(
+        list,
         area,
         buf,
         &mut testing_state.groups_component_state,
@@ -162,7 +194,7 @@ fn draw_testing_widget(
         .border_set(border::ROUNDED)
         .border_style(border_style)
         .title("")
-        .title(" Tests ");
+        .title(" [2] Tests ");
 
     let selected_group = groups_component_state
         .selected()
@@ -191,5 +223,91 @@ fn draw_testing_widget(
         list = list.highlight_style(Style::new().on_blue());
     }
 
-    list.render(area, buf, tests_component_state);
+    StatefulWidget::render(
+        list,
+        area,
+        buf,
+        tests_component_state,
+    );
+}
+
+fn draw_output_widget(
+    state: &mut State,
+    area: Rect,
+    buf: &mut Buffer,
+) {
+    let TestingState {
+        active_component,
+        groups_component_state,
+        tests_component_state,
+        groups,
+        tests_output,
+        ..
+    } = &mut state.testing_state;
+
+    let is_active = matches!(
+        active_component,
+        ActiveComponent::Output(_)
+    );
+
+    let border_style = if is_active {
+        Style::new().green()
+    } else {
+        Style::default()
+    };
+
+    let block = Block::bordered()
+        .border_set(border::ROUNDED)
+        .border_style(border_style)
+        .title("")
+        .title(" [3] Output ");
+
+    let seleced_group = groups_component_state
+        .selected()
+        .and_then(|index| groups.get(index));
+
+    let lines = match active_component {
+        ActiveComponent::Groups
+        | ActiveComponent::Output(OutputSource::Groups) => {
+            seleced_group.and_then(|group| group.output())
+        }
+        ActiveComponent::Tests
+        | ActiveComponent::Output(OutputSource::Tests) => {
+            let selected_test =
+                seleced_group.and_then(|group| {
+                    let tests = group.tests();
+                    tests_component_state
+                        .selected()
+                        .and_then(|index| tests.get(index))
+                });
+
+            selected_test
+                .and_then(|test| tests_output.get(test))
+                .map(|output| &**output)
+        }
+    }
+    .unwrap_or_default();
+
+    let lines =
+        lines.iter().map(Line::raw).collect::<Vec<_>>();
+
+    let lines_count = lines.len();
+
+    let paragraph = Paragraph::new(lines)
+        .wrap(Wrap { trim: false })
+        .block(block);
+
+    let scrollbar =
+        Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("▲"))
+            .track_symbol(Some("│"))
+            .thumb_symbol("|")
+            .thumb_style(Style::new().bold())
+            .end_symbol(Some("▼"));
+
+    let mut scollbar_state =
+        ScrollbarState::new(lines_count).position(0);
+
+    Widget::render(paragraph, area, buf);
+    scrollbar.render(area, buf, &mut scollbar_state);
 }

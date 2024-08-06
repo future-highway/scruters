@@ -10,7 +10,9 @@ pub(crate) trait AnyTest {
     fn name(&self) -> Cow<'_, TestName>;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
 pub(crate) enum Test {
     Named(TestName),
     #[serde(skip)]
@@ -49,16 +51,6 @@ impl AnyTest for Test {
         }
     }
 }
-
-#[allow(clippy::missing_trait_methods)]
-impl PartialEq for Test {
-    fn eq(&self, other: &Self) -> bool {
-        self.name().as_ref().eq(other.name().as_ref())
-    }
-}
-
-#[allow(clippy::missing_trait_methods)]
-impl Eq for Test {}
 
 #[allow(clippy::missing_trait_methods)]
 impl Ord for Test {

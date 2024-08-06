@@ -48,6 +48,10 @@ impl AnyGroup for CustomGroup {
             self.output = Some(vec![line]);
         }
     }
+
+    fn output(&self) -> Option<&[String]> {
+        self.output.as_deref()
+    }
 }
 
 #[allow(clippy::missing_trait_methods)]

@@ -41,6 +41,8 @@ pub(crate) trait AnyGroup {
     fn to_cargo_test_args(&self) -> CargoTestArgs<'_>;
 
     fn push_output(&mut self, line: String);
+
+    fn output(&self) -> Option<&[String]>;
 }
 
 pub(super) fn run_group<Group: AnyGroup>(

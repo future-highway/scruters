@@ -3,7 +3,13 @@ use core::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
 pub(crate) struct TestName(pub String);
 
