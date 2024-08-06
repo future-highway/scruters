@@ -256,11 +256,22 @@ fn draw_output_widget(
         Style::default()
     };
 
+    let title = match active_component {
+        ActiveComponent::Groups
+        | ActiveComponent::Output(OutputSource::Groups) => {
+            " [3] Group Output "
+        }
+        ActiveComponent::Tests
+        | ActiveComponent::Output(OutputSource::Tests) => {
+            " [3] Test Output "
+        }
+    };
+
     let block = Block::bordered()
         .border_set(border::ROUNDED)
         .border_style(border_style)
         .title("")
-        .title(" [3] Output ");
+        .title(title);
 
     let seleced_group = groups_component_state
         .selected()
