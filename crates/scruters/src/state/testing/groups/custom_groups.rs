@@ -24,8 +24,12 @@ impl AnyGroup for CustomGroup {
     }
 
     fn update_group(&mut self, group: Group) {
-        debug_assert!(self.name.eq(group.name().as_ref()));
+        debug_assert!(
+            self.name.eq(group.name().as_ref()),
+            "Expected group names to be equal"
+        );
 
+        #[allow(clippy::panic)]
         let Group::Custom(group) = group else {
             panic!("Expected a custom group");
         };
