@@ -1,15 +1,15 @@
 use super::{AnyGroup, GroupName};
 use crate::{
-    cargo::CargoTestArgs, state::testing::TestName,
+    cargo::CargoTestArgs, state::testing::tests::Test,
 };
-use alloc::borrow::Cow;
+use alloc::{borrow::Cow, collections::VecDeque};
 use core::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct CustomGroup {
     name: GroupName,
-    pub(super) tests: Vec<TestName>,
+    pub(super) tests: VecDeque<Test>,
     #[serde(skip, default)]
     output: Option<Vec<String>>,
 }
@@ -19,11 +19,11 @@ impl AnyGroup for CustomGroup {
         Cow::Borrowed(&self.name)
     }
 
-    fn tests(&self) -> &[TestName] {
-        &self.tests
+    fn tests(&self) -> &[Test] {
+        self.tests.as_slices().0
     }
 
-    fn set_tests(&mut self, tests: Vec<TestName>) {
+    fn set_tests(&mut self, tests: VecDeque<Test>) {
         self.tests = tests;
     }
 

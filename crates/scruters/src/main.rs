@@ -109,7 +109,6 @@ async fn main() -> Result<()> {
         #[allow(clippy::integer_division_remainder_used)]
         let mut maybe_message = tokio::select! {
             _ = tick_interval.tick() => {
-                trace!("Tick");
                 None
             },
             event = crossterm_events.next() => event.map_or_else(

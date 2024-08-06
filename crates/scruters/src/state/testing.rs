@@ -1,6 +1,4 @@
-pub(crate) use self::{
-    active_component::ActiveComponent, test_name::TestName,
-};
+pub(crate) use self::active_component::ActiveComponent;
 use super::helpers::default_list_state;
 use crate::{
     message::{Message, TestingMessage},
@@ -28,7 +26,9 @@ use tracing::{debug, error};
 
 mod active_component;
 pub(crate) mod groups;
-mod test_name;
+pub(crate) mod tests;
+
+pub(crate) const AUTO_GENERATED_MARKER: &str = "✨";
 
 #[allow(clippy::partial_pub_fields)]
 #[allow(clippy::unsafe_derive_deserialize)]

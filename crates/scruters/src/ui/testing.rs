@@ -1,6 +1,7 @@
 use crate::state::{
     testing::{
-        groups::AnyGroup, ActiveComponent, TestingState,
+        groups::AnyGroup, tests::AnyTest, ActiveComponent,
+        TestingState,
     },
     State,
 };
@@ -167,19 +168,20 @@ fn draw_testing_widget(
         .selected()
         .and_then(|index| groups.get(index));
 
-    let list_items = selected_group
-        .map(|group| {
-            group
+    let selected_group_tests = selected_group
+        .map(|tests| {
+            tests
                 .tests()
                 .iter()
-                .map(|test_name| {
-                    ListItem::new(Line::raw(
-                        test_name.as_str(),
-                    ))
-                })
+                .map(|test| test.name())
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
+
+    let list_items = selected_group_tests
+        .iter()
+        .map(|test| ListItem::new(Line::raw(test.as_str())))
+        .collect::<Vec<_>>();
 
     let mut list = List::new(list_items)
         .block(block)

@@ -7,7 +7,7 @@ use self::{
 pub(crate) use self::{
     group::Group, group_name::GroupName,
 };
-use super::TestName;
+use super::tests::Test;
 use crate::{
     cargo::CargoTestArgs,
     command::spawn_command,
@@ -34,9 +34,9 @@ mod group_name;
 pub(crate) trait AnyGroup {
     fn name(&self) -> Cow<'_, GroupName>;
 
-    fn tests(&self) -> &[TestName];
+    fn tests(&self) -> &[Test];
 
-    fn set_tests(&mut self, tests: Vec<TestName>);
+    fn set_tests(&mut self, tests: VecDeque<Test>);
 
     fn to_cargo_test_args(&self) -> CargoTestArgs<'_>;
 
