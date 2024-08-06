@@ -36,7 +36,7 @@ pub(crate) trait AnyGroup {
 
     fn tests(&self) -> &[Test];
 
-    fn set_tests(&mut self, tests: VecDeque<Test>);
+    fn update_group(&mut self, group: Group);
 
     fn to_cargo_test_args(&self) -> CargoTestArgs<'_>;
 

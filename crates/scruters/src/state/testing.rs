@@ -293,8 +293,7 @@ impl TestingState {
                             );
                         };
 
-                        existing_group
-                            .set_tests(group.into_tests());
+                        existing_group.update_group(group);
                     }
                     Err(i) => {
                         self.groups.insert(i, group);

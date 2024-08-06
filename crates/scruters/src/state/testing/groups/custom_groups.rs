@@ -1,4 +1,4 @@
-use super::{AnyGroup, GroupName};
+use super::{AnyGroup, Group, GroupName};
 use crate::{
     cargo::CargoTestArgs, state::testing::tests::Test,
 };
@@ -23,8 +23,14 @@ impl AnyGroup for CustomGroup {
         self.tests.as_slices().0
     }
 
-    fn set_tests(&mut self, tests: VecDeque<Test>) {
-        self.tests = tests;
+    fn update_group(&mut self, group: Group) {
+        debug_assert!(self.name.eq(group.name().as_ref()));
+
+        let Group::Custom(group) = group else {
+            panic!("Expected a custom group");
+        };
+
+        self.tests = group.tests;
     }
 
     fn to_cargo_test_args(&self) -> CargoTestArgs<'_> {
