@@ -385,8 +385,10 @@ fn draw_output_widget(
             .thumb_style(Style::new().bold())
             .end_symbol(Some("▼"));
 
-    let mut scollbar_state =
-        ScrollbarState::new(lines_count).position(0);
+    let mut scollbar_state = ScrollbarState::new(
+        lines_count,
+    )
+    .position(state.testing_state.output_scroll_position);
 
     Widget::render(paragraph, area, buf);
     scrollbar.render(

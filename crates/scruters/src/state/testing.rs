@@ -62,6 +62,8 @@ pub(crate) struct TestingState {
     pub groups_component_state: ListState,
     #[serde(skip, default = "default_list_state")]
     pub tests_component_state: ListState,
+    #[serde(skip, default)]
+    pub output_scroll_position: usize,
     #[serde(default)]
     pub groups: Groups,
     #[serde(skip, default)]
@@ -78,6 +80,7 @@ impl Default for TestingState {
             active_component: ActiveComponent::Groups,
             groups_component_state: default_list_state(),
             tests_component_state: default_list_state(),
+            output_scroll_position: 0,
             groups: Groups::default(),
             test_results: TestResults::default(),
             group_output_capture_mode:
@@ -467,6 +470,7 @@ impl TestingState {
                 };
 
                 group.reset_output();
+                self.output_scroll_position = 0;
 
                 self.group_output_capture_mode =
                     GroupOutputCaptureMode::default();
@@ -515,6 +519,8 @@ impl TestingState {
                 {
                     test_result.reset();
                 }
+
+                self.output_scroll_position = 0;
 
                 self.task = Some(
                     run_test(test, message_tx)
