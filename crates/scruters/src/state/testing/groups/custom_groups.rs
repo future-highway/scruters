@@ -41,6 +41,10 @@ impl AnyGroup for CustomGroup {
         todo!()
     }
 
+    fn reset_output(&mut self) {
+        self.output = None;
+    }
+
     fn push_output(&mut self, line: String) {
         if let Some(output) = &mut self.output {
             output.push(line);

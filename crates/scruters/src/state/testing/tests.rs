@@ -1,22 +1,28 @@
-pub(crate) use self::test_name::TestName;
+pub(crate) use self::{
+    test_name::TestName, test_result::TestResult,
+};
 use super::AUTO_GENERATED_MARKER;
+use crate::cargo::CargoTestArgs;
 use alloc::borrow::Cow;
 use core::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 
 mod test_name;
-
-pub(crate) trait AnyTest {
-    fn name(&self) -> Cow<'_, TestName>;
-}
+mod test_result;
 
 #[derive(
-    Debug, PartialEq, Eq, Hash, Serialize, Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
 pub(crate) enum Test {
     Named(TestName),
     #[serde(skip)]
-    Integration {
+    IntegrationTarget {
         package_name: String,
         target_name: String,
     },
@@ -32,11 +38,11 @@ pub(crate) enum Test {
     },
 }
 
-impl AnyTest for Test {
-    fn name(&self) -> Cow<'_, TestName> {
+impl Test {
+    pub fn name(&self) -> Cow<'_, TestName> {
         match self {
             Self::Named(name) => Cow::Borrowed(name),
-            Self::Integration { package_name, target_name } => Cow::Owned(
+            Self::IntegrationTarget { package_name, target_name } => Cow::Owned(
                 format!("{package_name}::{target_name} {AUTO_GENERATED_MARKER}")
                     .into()
             ),
@@ -48,6 +54,60 @@ impl AnyTest for Test {
                 format!("main {AUTO_GENERATED_MARKER}")
                     .into(),
             ),
+        }
+    }
+
+    pub fn to_cargo_test_args(&self) -> CargoTestArgs<'_> {
+        match self {
+            Self::Named(test_name) => CargoTestArgs {
+                args: Some(
+                    vec![test_name.0.clone().into()].into(),
+                ),
+                test_args: Some(&["--exact"]),
+                ..Default::default()
+            },
+            Self::IntegrationTarget {
+                package_name,
+                target_name,
+            } => CargoTestArgs {
+                args: Some(
+                    vec![
+                        "--package".into(),
+                        package_name.clone().into(),
+                        "--test".into(),
+                        target_name.clone().into(),
+                    ]
+                    .into(),
+                ),
+                ..Default::default()
+            },
+            Self::Examples { package_name, .. } => {
+                CargoTestArgs {
+                    args: Some(
+                        vec![
+                            "--package".into(),
+                            package_name.clone().into(),
+                            "--examples".into(),
+                        ]
+                        .into(),
+                    ),
+                    ..Default::default()
+                }
+            }
+            Self::Example { package_name, target_name } => {
+                CargoTestArgs {
+                    args: Some(
+                        vec![
+                            "--package".into(),
+                            package_name.clone().into(),
+                            "--example".into(),
+                            target_name.clone().into(),
+                        ]
+                        .into(),
+                    ),
+                    ..Default::default()
+                }
+            }
         }
     }
 }

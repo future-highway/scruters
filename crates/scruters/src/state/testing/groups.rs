@@ -6,30 +6,20 @@ use self::{
 };
 pub(crate) use self::{
     group::Group, group_name::GroupName,
+    group_output::GroupOutputCaptureMode,
 };
 use super::tests::Test;
-use crate::{
-    cargo::CargoTestArgs,
-    command::spawn_command,
-    message::{Message, TestingMessage},
-};
+use crate::cargo::CargoTestArgs;
 use alloc::{borrow::Cow, collections::VecDeque};
-use color_eyre::eyre::{Context, Result};
+use color_eyre::eyre::Result;
 use core::ops::{Deref, DerefMut};
-use futures::stream::select;
 use serde::{Deserialize, Serialize};
-use tokio::{
-    io::{AsyncBufReadExt as _, BufReader},
-    sync::mpsc::UnboundedSender,
-    task::JoinHandle,
-};
-use tokio_stream::{wrappers::LinesStream, StreamExt};
-use tokio_util::sync::CancellationToken;
 
 pub mod auto_generated_groups;
 mod custom_groups;
 mod group;
 mod group_name;
+mod group_output;
 
 pub(crate) trait AnyGroup {
     fn name(&self) -> Cow<'_, GroupName>;
@@ -40,52 +30,11 @@ pub(crate) trait AnyGroup {
 
     fn to_cargo_test_args(&self) -> CargoTestArgs<'_>;
 
+    fn reset_output(&mut self);
+
     fn push_output(&mut self, line: String);
 
     fn output(&self) -> Option<&[String]>;
-}
-
-pub(super) fn run_group<Group: AnyGroup>(
-    group: &Group,
-    messages_tx: UnboundedSender<Message>,
-) -> Result<(JoinHandle<()>, CancellationToken)> {
-    let cancellation_token = CancellationToken::new();
-
-    let command = group.to_cargo_test_args().into_command();
-
-    let (stdout, stderr) =
-        spawn_command(command, cancellation_token.clone())
-            .wrap_err("Failed to spawn command")?;
-
-    let mut reader = select(
-        LinesStream::new(BufReader::new(stdout).lines()),
-        LinesStream::new(BufReader::new(stderr).lines()),
-    );
-
-    let group_name = group.name().into_owned();
-
-    let join_handle = tokio::spawn(async move {
-        while let Ok(Some(line)) =
-            reader.next().await.transpose().map_err(|error| {
-                tracing::error!(
-                    ?error,
-                    "Error reading line from run group command output"
-                );
-            })
-        {
-            if let Err(error) = messages_tx
-                .send(Message::Testing(
-                    TestingMessage::GroupRunOutput(group_name.clone(), line)
-                )) {
-                tracing::error!(
-                    ?error,
-                    "Failed to send group run output message"
-                );
-            }
-        }
-    });
-
-    Ok((join_handle, cancellation_token))
 }
 
 #[derive(Debug, Default)]
