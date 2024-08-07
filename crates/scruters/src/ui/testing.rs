@@ -20,6 +20,11 @@ use ratatui::{
     Frame,
 };
 
+const HIGHLIGHT_SYMBOL: &str = "> ";
+const STATUS_MARK_PASSED: &str = "✓";
+const STATUS_MARK_FAILED: &str = "✗";
+const STATUS_MARK_NOT_RUN: &str = "?";
+
 #[allow(clippy::cognitive_complexity)]
 pub fn draw(state: &mut State, frame: &mut Frame<'_>) {
     let areas = Layout::default()
@@ -141,21 +146,61 @@ fn draw_groups_widget(
         .title("")
         .title(" [1] Groups ");
 
-    let list_items = testing_state
+    let groups = testing_state
         .groups
         .iter()
-        .map(|group| group.name())
+        .map(|group| {
+            let mut status = Some(true);
+
+            for test in group.tests() {
+                match testing_state.tests_output.get(test) {
+                    None if matches!(
+                        status,
+                        Some(true)
+                    ) =>
+                    {
+                        status = None;
+                    }
+                    Some((false, _)) => {
+                        status = Some(false);
+                        break;
+                    }
+                    Some((true, _)) | None => {}
+                }
+            }
+
+            (group.name(), status)
+        })
         .collect::<Vec<_>>();
 
-    let list_items = list_items
+    let list_items = groups
         .iter()
-        .map(AsRef::as_ref)
-        .map(|group| ListItem::new(Line::raw(group)))
+        .map(|(name, status)| {
+            let status = match status {
+                Some(true) => {
+                    Span::raw(STATUS_MARK_PASSED).green()
+                }
+                Some(false) => {
+                    Span::raw(STATUS_MARK_FAILED).red()
+                }
+                None => {
+                    Span::raw(STATUS_MARK_NOT_RUN).yellow()
+                }
+            };
+
+            let name = Span::raw(name.as_str());
+
+            ListItem::new(Line::from(vec![
+                status,
+                Span::raw(" "),
+                name,
+            ]))
+        })
         .collect::<Vec<_>>();
 
     let mut list = List::new(list_items)
         .block(block)
-        .highlight_symbol("> ");
+        .highlight_symbol(HIGHLIGHT_SYMBOL);
 
     if is_active {
         list = list.highlight_style(Style::new().on_blue());
@@ -223,12 +268,17 @@ fn draw_testing_widget(
         .map(|(test, name)| {
             let status_mark =
                 tests_output.get(test).map_or_else(
-                    || Span::raw("?").yellow(),
+                    || {
+                        Span::raw(STATUS_MARK_NOT_RUN)
+                            .yellow()
+                    },
                     |(passed, _)| {
                         if *passed {
-                            Span::raw("✓").green()
+                            Span::raw(STATUS_MARK_PASSED)
+                                .green()
                         } else {
-                            Span::raw("✗").red()
+                            Span::raw(STATUS_MARK_FAILED)
+                                .red()
                         }
                     },
                 );
@@ -245,7 +295,7 @@ fn draw_testing_widget(
 
     let mut list = List::new(list_items)
         .block(block)
-        .highlight_symbol("> ");
+        .highlight_symbol(HIGHLIGHT_SYMBOL);
 
     if is_active {
         list = list.highlight_style(Style::new().on_blue());
