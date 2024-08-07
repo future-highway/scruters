@@ -9,7 +9,7 @@ use alloc::borrow::Cow;
 use ansi_to_tui::IntoText;
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Margin, Rect},
     style::{Style, Stylize},
     symbols::border,
     text::{Line, Span},
@@ -389,5 +389,9 @@ fn draw_output_widget(
         ScrollbarState::new(lines_count).position(0);
 
     Widget::render(paragraph, area, buf);
-    scrollbar.render(area, buf, &mut scollbar_state);
+    scrollbar.render(
+        area.inner(Margin { vertical: 1, horizontal: 0 }),
+        buf,
+        &mut scollbar_state,
+    );
 }
