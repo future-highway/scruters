@@ -1,7 +1,6 @@
 use crate::state::{
     testing::{
         groups::AnyGroup, ActiveComponent, OutputSource,
-        TestingState,
     },
     State,
 };
@@ -146,7 +145,7 @@ fn draw_groups_widget(
         .border_set(border::ROUNDED)
         .border_style(border_style)
         .title("")
-        .title(" [1] Groups ");
+        .title(" <1> Groups ");
 
     let groups = testing_state
         .groups
@@ -220,7 +219,7 @@ fn draw_testing_widget(
         .border_set(border::ROUNDED)
         .border_style(border_style)
         .title("")
-        .title(" [2] Tests ");
+        .title(" <2> Tests ");
 
     let selected_group = state
         .testing_state
@@ -299,17 +298,10 @@ fn draw_output_widget(
     area: Rect,
     buf: &mut Buffer,
 ) {
-    let TestingState {
-        active_component,
-        groups_component_state,
-        tests_component_state,
-        groups,
-        test_results: tests_output,
-        ..
-    } = &mut state.testing_state;
+    let testing_state = &mut state.testing_state;
 
     let is_active = matches!(
-        active_component,
+        testing_state.active_component,
         ActiveComponent::Output(_)
     );
 
@@ -319,14 +311,14 @@ fn draw_output_widget(
         Style::default()
     };
 
-    let title = match active_component {
+    let title = match testing_state.active_component {
         ActiveComponent::Groups
         | ActiveComponent::Output(OutputSource::Groups) => {
-            " [3] Group Output "
+            " <3> Group Output "
         }
         ActiveComponent::Tests
         | ActiveComponent::Output(OutputSource::Tests) => {
-            " [3] Test Output "
+            " <3> Test Output "
         }
     };
 
@@ -336,30 +328,31 @@ fn draw_output_widget(
         .title("")
         .title(title);
 
-    let seleced_group = groups_component_state
+    let seleced_group = testing_state
+        .groups_component_state
         .selected()
-        .and_then(|index| groups.get(index));
+        .and_then(|index| testing_state.groups.get(index));
 
-    let lines = match active_component {
+    let lines = match testing_state.active_component {
         ActiveComponent::Groups
         | ActiveComponent::Output(OutputSource::Groups) => {
-            seleced_group.and_then(|group| group.output())
+            seleced_group.and_then(|group| {
+                testing_state.get_group_output(group)
+            })
         }
         ActiveComponent::Tests
         | ActiveComponent::Output(OutputSource::Tests) => {
             let selected_test =
                 seleced_group.and_then(|group| {
                     let tests = group.tests();
-                    tests_component_state
+                    testing_state
+                        .tests_component_state
                         .selected()
                         .and_then(|index| tests.get(index))
                 });
 
             selected_test.and_then(|test| {
-                tests_output
-                    .as_inner()
-                    .get(test)
-                    .map(|test_result| &*test_result.output)
+                testing_state.get_test_output(test)
             })
         }
     }
