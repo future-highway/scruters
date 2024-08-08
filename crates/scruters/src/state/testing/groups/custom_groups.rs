@@ -1,17 +1,18 @@
-use super::{AnyGroup, Group, GroupName};
+use super::{AnyGroup, Group, GroupKey, GroupName};
 use crate::{
     cargo::CargoTestArgs, state::testing::tests::Test,
 };
 use alloc::{borrow::Cow, collections::VecDeque};
-use core::cmp::Ordering;
+use core::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct CustomGroup {
     name: GroupName,
     pub(super) tests: VecDeque<Test>,
-    #[serde(skip, default)]
-    output: Option<Vec<String>>,
 }
 
 impl AnyGroup for CustomGroup {
@@ -41,20 +42,8 @@ impl AnyGroup for CustomGroup {
         todo!()
     }
 
-    fn reset_output(&mut self) {
-        self.output = None;
-    }
-
-    fn push_output(&mut self, line: String) {
-        if let Some(output) = &mut self.output {
-            output.push(line);
-        } else {
-            self.output = Some(vec![line]);
-        }
-    }
-
-    fn output(&self) -> Option<&[String]> {
-        self.output.as_deref()
+    fn as_group_key(&self) -> GroupKey<'_> {
+        GroupKey::Custom(Cow::Borrowed(&self.name))
     }
 }
 
@@ -67,6 +56,13 @@ impl PartialEq for CustomGroup {
 
 #[allow(clippy::missing_trait_methods)]
 impl Eq for CustomGroup {}
+
+#[allow(clippy::missing_trait_methods)]
+impl Hash for CustomGroup {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+    }
+}
 
 #[allow(clippy::missing_trait_methods)]
 impl PartialOrd for CustomGroup {

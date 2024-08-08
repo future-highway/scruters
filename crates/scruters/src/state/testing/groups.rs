@@ -5,7 +5,8 @@ use self::{
     custom_groups::CustomGroup,
 };
 pub(crate) use self::{
-    group::Group, group_name::GroupName,
+    group::Group, group_key::GroupKey,
+    group_name::GroupName,
     group_output::GroupOutputCaptureMode,
 };
 use super::tests::Test;
@@ -18,6 +19,7 @@ use serde::{Deserialize, Serialize};
 pub mod auto_generated_groups;
 mod custom_groups;
 mod group;
+mod group_key;
 mod group_name;
 mod group_output;
 
@@ -30,11 +32,7 @@ pub(crate) trait AnyGroup {
 
     fn to_cargo_test_args(&self) -> CargoTestArgs<'_>;
 
-    fn reset_output(&mut self);
-
-    fn push_output(&mut self, line: String);
-
-    fn output(&self) -> Option<&[String]>;
+    fn as_group_key(&self) -> GroupKey<'_>;
 }
 
 #[derive(Debug, Default)]
