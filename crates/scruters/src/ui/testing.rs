@@ -235,13 +235,13 @@ fn draw_testing_widget(
 
     let selected_group_test_names = selected_group_tests
         .iter()
-        .map(|test| test.name())
+        .map(|test| test.full_name())
         .collect::<Vec<_>>();
 
     let selected_group_test_names =
         selected_group_test_names
             .iter()
-            .map(Cow::as_ref)
+            .map(|name| name.as_str())
             .collect::<Vec<_>>();
 
     let list_items = selected_group_tests
@@ -267,7 +267,7 @@ fn draw_testing_widget(
                     },
                 );
 
-            let test_name = Span::raw(name.as_str());
+            let test_name = Span::raw(name);
 
             ListItem::new(Line::from(vec![
                 status_mark,

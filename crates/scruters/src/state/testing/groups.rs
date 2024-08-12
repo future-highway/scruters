@@ -10,7 +10,7 @@ pub(crate) use self::{
     group_output::GroupOutputCaptureMode,
 };
 use super::tests::Test;
-use crate::cargo::CargoTestArgs;
+use crate::cargo::CargoCommandArgs;
 use alloc::{borrow::Cow, collections::VecDeque};
 use color_eyre::eyre::Result;
 use core::ops::{Deref, DerefMut};
@@ -30,7 +30,8 @@ pub(crate) trait AnyGroup {
 
     fn update_group(&mut self, group: Group);
 
-    fn to_cargo_test_args(&self) -> CargoTestArgs<'_>;
+    fn to_cargo_command_args(&self)
+    -> CargoCommandArgs<'_>;
 
     fn as_group_key(&self) -> GroupKey<'_>;
 }

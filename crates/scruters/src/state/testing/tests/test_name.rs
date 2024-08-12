@@ -1,5 +1,8 @@
 use crate::state::testing::AUTO_GENERATED_MARKER;
-use core::cmp::Ordering;
+use core::{
+    cmp::Ordering,
+    fmt::{self, Display, Formatter},
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -47,5 +50,11 @@ impl Ord for TestName {
             (false, true) => Ordering::Greater,
             _ => self.0.cmp(&other.0),
         }
+    }
+}
+
+impl Display for TestName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

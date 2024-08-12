@@ -1,6 +1,6 @@
 use super::{AnyGroup, Group, GroupKey, GroupName};
 use crate::{
-    cargo::CargoTestArgs, state::testing::tests::Test,
+    cargo::CargoCommandArgs, state::testing::tests::Test,
 };
 use alloc::{borrow::Cow, collections::VecDeque};
 use core::{
@@ -38,7 +38,9 @@ impl AnyGroup for CustomGroup {
         self.tests = group.tests;
     }
 
-    fn to_cargo_test_args(&self) -> CargoTestArgs<'_> {
+    fn to_cargo_command_args(
+        &self,
+    ) -> CargoCommandArgs<'_> {
         todo!()
     }
 
