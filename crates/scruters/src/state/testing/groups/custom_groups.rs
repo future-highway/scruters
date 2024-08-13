@@ -40,7 +40,7 @@ impl AnyGroup for CustomGroup {
 
     fn to_cargo_command_args(
         &self,
-    ) -> CargoCommandArgs<'_> {
+    ) -> Vec<CargoCommandArgs<'_>> {
         todo!()
     }
 

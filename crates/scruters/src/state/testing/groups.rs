@@ -30,8 +30,9 @@ pub(crate) trait AnyGroup {
 
     fn update_group(&mut self, group: Group);
 
-    fn to_cargo_command_args(&self)
-    -> CargoCommandArgs<'_>;
+    fn to_cargo_command_args(
+        &self,
+    ) -> Vec<CargoCommandArgs<'_>>;
 
     fn as_group_key(&self) -> GroupKey<'_>;
 }

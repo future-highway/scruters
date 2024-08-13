@@ -2,7 +2,10 @@ pub(crate) use self::{
     active_component::{ActiveComponent, OutputSource},
     test_results::TestResults,
 };
-use super::helpers::default_list_state;
+use super::{
+    super::cargo::CargoCommandArgs,
+    helpers::default_list_state,
+};
 use crate::{
     command::spawn_command,
     message::{Message, TestingMessage},
@@ -601,7 +604,8 @@ impl TestingState {
             return Ok(());
         };
 
-        let group_key = group.as_group_key().clone();
+        let group_key =
+            group.as_group_key().to_owned().clone();
 
         drop(self.group_results.remove_entry(&group_key));
 
@@ -610,10 +614,7 @@ impl TestingState {
         self.group_output_capture_mode =
             GroupOutputCaptureMode::default();
 
-        self.task = Some(
-            run_group(group, message_tx)
-                .wrap_err("Failed to run group")?,
-        );
+        self.task = Some(run_group(group, message_tx));
 
         Ok(())
     }
@@ -851,11 +852,16 @@ async fn watch_auto_generated_groups(
 fn run_group<Group: AnyGroup>(
     group: &Group,
     messages_tx: UnboundedSender<Message>,
-) -> Result<(JoinHandle<()>, CancellationToken)> {
-    let command =
-        group.to_cargo_command_args().into_command();
-    let group_key = group.as_group_key().clone();
-    run_command(command, messages_tx, move |line| {
+) -> (JoinHandle<()>, CancellationToken) {
+    let commands = group
+        .to_cargo_command_args()
+        .into_iter()
+        .map(CargoCommandArgs::into_command)
+        .collect::<Vec<_>>();
+
+    let group_key = group.as_group_key().to_owned().clone();
+
+    run_commands(commands, messages_tx, move |line| {
         TestingMessage::OutputFromGroupRun(
             group_key.clone(),
             line,
@@ -869,20 +875,62 @@ fn run_test(
 ) -> Result<(JoinHandle<()>, CancellationToken)> {
     let command =
         test.to_cargo_command_args().into_command();
-    run_command(command, messages_tx, move |line| {
-        TestingMessage::OutputFromTestRun(
-            test.clone(),
-            line,
-        )
-    })
+
+    run_command(
+        command,
+        messages_tx,
+        move |line| {
+            TestingMessage::OutputFromTestRun(
+                test.clone(),
+                line,
+            )
+        },
+        None,
+    )
+}
+
+fn run_commands(
+    commands: Vec<Command>,
+    messages_tx: UnboundedSender<Message>,
+    f: impl Fn(String) -> TestingMessage
+    + Send
+    + 'static
+    + Clone,
+) -> (JoinHandle<()>, CancellationToken) {
+    let cancellation_token = CancellationToken::new();
+    let cancellation_token_clone =
+        cancellation_token.clone();
+
+    let join_handle = tokio::spawn(async move {
+        for command in commands {
+            let Ok((join_handle, _)) = run_command(
+                command,
+                messages_tx.clone(),
+                f.clone(),
+                Some(cancellation_token.clone()),
+            ) else {
+                cancellation_token.cancel();
+                break;
+            };
+
+            if join_handle.await.is_err() {
+                cancellation_token.cancel();
+                break;
+            }
+        }
+    });
+
+    (join_handle, cancellation_token_clone)
 }
 
 fn run_command(
     command: Command,
     messages_tx: UnboundedSender<Message>,
     f: impl Fn(String) -> TestingMessage + Send + 'static,
+    cancellation_token: Option<CancellationToken>,
 ) -> Result<(JoinHandle<()>, CancellationToken)> {
-    let cancellation_token = CancellationToken::new();
+    let cancellation_token =
+        cancellation_token.unwrap_or_default();
 
     let (stdout, stderr) =
         spawn_command(command, cancellation_token.clone())
