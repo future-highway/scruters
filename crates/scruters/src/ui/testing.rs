@@ -1,10 +1,11 @@
+use super::super::state::testing::tests::TestName;
 use crate::state::{
     testing::{
-        groups::AnyGroup, ActiveComponent, OutputSource,
+        groups::AnyGroup, tests::Test, ActiveComponent,
+        OutputSource,
     },
     State,
 };
-use alloc::borrow::Cow;
 use ansi_to_tui::IntoText;
 use ratatui::{
     buffer::Buffer,
@@ -235,13 +236,13 @@ fn draw_testing_widget(
 
     let selected_group_test_names = selected_group_tests
         .iter()
-        .map(|test| test.full_name())
+        .map(Test::full_name)
         .collect::<Vec<_>>();
 
     let selected_group_test_names =
         selected_group_test_names
             .iter()
-            .map(|name| name.as_str())
+            .map(TestName::as_str)
             .collect::<Vec<_>>();
 
     let list_items = selected_group_tests
@@ -368,6 +369,13 @@ fn draw_output_widget(
 
     let paragraph = Paragraph::new(lines)
         .wrap(Wrap { trim: false })
+        .scroll((
+            u16::try_from(
+                state.testing_state.output_scroll_position,
+            )
+            .unwrap_or_default(),
+            0,
+        ))
         .block(block);
 
     let scrollbar =

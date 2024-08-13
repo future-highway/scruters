@@ -128,6 +128,7 @@ impl TestingState {
     }
 
     #[allow(clippy::too_many_lines)]
+    #[allow(clippy::cognitive_complexity)]
     #[allow(clippy::needless_pass_by_ref_mut)]
     pub(super) fn handle_key_event(
         &mut self,
@@ -241,6 +242,16 @@ impl TestingState {
                     TestingMessage::SelectNextTest,
                 ))
             }
+            KeyCode::Down
+                if matches!(
+                    self.active_component,
+                    ActiveComponent::Output(_)
+                ) =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::ScrollOutputDown(1),
+                ))
+            }
             KeyCode::Esc
                 if self.active_component
                     == ActiveComponent::Tests =>
@@ -265,6 +276,16 @@ impl TestingState {
             {
                 Some(Message::Testing(
                     TestingMessage::SelectLastTest,
+                ))
+            }
+            KeyCode::End
+                if matches!(
+                    self.active_component,
+                    ActiveComponent::Output(_)
+                ) =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::ScrollOutputToBottom,
                 ))
             }
             KeyCode::Enter
@@ -293,6 +314,16 @@ impl TestingState {
                     TestingMessage::SelectFirstTest,
                 ))
             }
+            KeyCode::Home
+                if matches!(
+                    self.active_component,
+                    ActiveComponent::Output(_)
+                ) =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::ScrollOutputToTop,
+                ))
+            }
             KeyCode::Up
                 if self.active_component
                     == ActiveComponent::Groups =>
@@ -309,10 +340,21 @@ impl TestingState {
                     TestingMessage::SelectPreviousTest,
                 ))
             }
+            KeyCode::Up
+                if matches!(
+                    self.active_component,
+                    ActiveComponent::Output(_)
+                ) =>
+            {
+                Some(Message::Testing(
+                    TestingMessage::ScrollOutputUp(1),
+                ))
+            }
             _ => None,
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub(super) async fn handle_message(
         &mut self,
         message: TestingMessage,
@@ -351,6 +393,60 @@ impl TestingState {
             }
             TestingMessage::RunSelectedTest => {
                 self.run_selected_test(message_tx).await?;
+            }
+            TestingMessage::ScrollOutputDown(lines) => {
+                self.output_scroll_position = self
+                    .output_scroll_position
+                    .saturating_add(lines);
+            }
+            TestingMessage::ScrollOutputToBottom => {
+                let ActiveComponent::Output(source) =
+                    &self.active_component
+                else {
+                    return Ok(None);
+                };
+
+                let Some(group) = self
+                    .groups_component_state
+                    .selected()
+                    .and_then(|index| {
+                        self.groups.get(index)
+                    })
+                else {
+                    return Ok(None);
+                };
+
+                let lines = match source {
+                    OutputSource::Groups => self
+                        .get_group_output(group)
+                        .map_or(0, <[_]>::len),
+                    OutputSource::Tests => {
+                        let Some(test) = self
+                            .tests_component_state
+                            .selected()
+                            .and_then(|index| {
+                                group.tests().get(index)
+                            })
+                        else {
+                            return Ok(None);
+                        };
+
+                        self.get_test_output(test)
+                            .map_or(0, |output| {
+                                output.len()
+                            })
+                    }
+                };
+
+                self.output_scroll_position = lines;
+            }
+            TestingMessage::ScrollOutputToTop => {
+                self.output_scroll_position = 0;
+            }
+            TestingMessage::ScrollOutputUp(lines) => {
+                self.output_scroll_position = self
+                    .output_scroll_position
+                    .saturating_sub(lines);
             }
             TestingMessage::SetActiveComponent(
                 component,
